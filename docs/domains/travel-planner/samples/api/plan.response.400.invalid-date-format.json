@@ -1,0 +1,5 @@
+{
+  "errors": [
+    { "field": "start_date", "code": "format", "message": "Must be YYYY-MM-DD" }
+  ]
+}

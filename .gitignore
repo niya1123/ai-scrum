@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Logs and reports
+out/logs/
+playwright-report/
+test-results/
+
+# Env files
+.env
+.env.local
+
+# OS/editor
+.DS_Store
+.vscode/

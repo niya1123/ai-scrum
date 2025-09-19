@@ -1,0 +1,33 @@
+{
+  "request": {
+    "method": "PATCH",
+    "path": "/api/tasks/8d3d4cf0-1234-4c5b-b17e-1f7d23456789",
+    "body": {
+      "done": true
+    }
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "content-type": "application/json"
+    },
+    "body": {
+      "id": "8d3d4cf0-1234-4c5b-b17e-1f7d23456789",
+      "title": "Buy milk",
+      "done": true,
+      "createdAt": "2025-09-19T16:30:00.000Z"
+    }
+  },
+  "error_done_required": {
+    "status": 400,
+    "body": {
+      "error": "DONE_REQUIRED"
+    }
+  },
+  "error_not_found": {
+    "status": 404,
+    "body": {
+      "error": "TASK_NOT_FOUND"
+    }
+  }
+}

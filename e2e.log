@@ -1,0 +1,86 @@
+
+> ai-scrum-tasks@0.1.0 test:e2e:ci
+> PLAYWRIGHT_WEB_SERVER_MODE=prod PLAYWRIGHT_HEADLESS=1 PLAYWRIGHT_JSON_REPORT=playwright-report/results.json node scripts/run-e2e-local.mjs
+
+
+> ai-scrum-tasks@0.1.0 build
+> next build
+
+  ▲ Next.js 14.2.32
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/7) ...
+   Generating static pages (1/7) 
+   Generating static pages (3/7) 
+   Generating static pages (5/7) 
+ ✓ Generating static pages (7/7)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    1.27 kB        88.4 kB
+├ ○ /_not-found                          875 B            88 kB
+├ ƒ /api/plan                            0 B                0 B
+├ ƒ /api/tasks                           0 B                0 B
+├ ƒ /api/tasks/[id]                      0 B                0 B
+└ ○ /trip                                1.34 kB        88.4 kB
++ First Load JS shared by all            87.1 kB
+  ├ chunks/117-5d6c1b601dfd2ba9.js       31.6 kB
+  ├ chunks/fd9d1056-9f91b5e418130764.js  53.7 kB
+  └ other shared chunks (total)          1.85 kB
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
+
+> ai-scrum-tasks@0.1.0 start
+> next start -p $PORT
+
+  ▲ Next.js 14.2.32
+  - Local:        http://localhost:55331
+
+ ✓ Starting...
+ ✓ Ready in 121ms
+
+Running 29 tests using 1 worker
+
+[1A[2K[1/29] [chromium] › tests/e2e/ac_api_list.spec.ts:9:3 › TDA-S-001 API — List tasks (Task model) › [AC: TDA-001] GET /api/tasks は 200 と JSON配列
+[1A[2K[2/29] [chromium] › tests/e2e/ac_api_list.spec.ts:16:3 › TDA-S-001 API — List tasks (Task model) › [AC: TDA-004] Content-Type は application/json
+[1A[2K[3/29] [chromium] › tests/e2e/ac_api_list.spec.ts:21:3 › TDA-S-001 API — List tasks (Task model) › [AC: TDA-003] createdAt 降順で返却
+[1A[2K[4/29] [chromium] › tests/e2e/ac_api_list.spec.ts:31:3 › TDA-S-001 API — List tasks (Task model) › [AC: TDA-002] 各要素の形状: id,title,done,createdAt(ISO8601)
+[1A[2K[5/29] [chromium] › tests/e2e/ac_create.spec.ts:9:3 › TDA-S-003 Create task (UI + API) › [AC: TDA-009] #new_task に入力し Enter で POST（title は trim）
+[1A[2K[6/29] [chromium] › tests/e2e/ac_create.spec.ts:17:3 › TDA-S-003 Create task (UI + API) › [AC: TDA-010] 201でTask返却→一覧先頭に追加・入力クリア
+[1A[2K[7/29] [chromium] › tests/e2e/ac_create.spec.ts:26:3 › TDA-S-003 Create task (UI + API) › [AC: TDA-011] 生成Taskは done=false で createdAt はサーバ側付与
+[1A[2K[8/29] [chromium] › tests/e2e/ac_delete.spec.ts:9:3 › TDA-S-005 Delete task (UI + API) › [AC: TDA-014] 各項目に button[aria-label="Delete task"] を表示
+[1A[2K[9/29] [chromium] › tests/e2e/ac_delete.spec.ts:16:3 › TDA-S-005 Delete task (UI + API) › [AC: TDA-015] クリックで DELETE /api/tasks/:id → 200 {ok:true}、UIから該当項目削除、0件なら空状態表示
+[1A[2K[10/29] [chromium] › tests/e2e/ac_store.spec.ts:4:8 › TDA-S-007 In-memory store & IDs › [AC: TDA-019] プロセス生存中は保持、再起動で空に戻る（READMEに明記）
+[1A[2K[11/29] [chromium] › tests/e2e/ac_store.spec.ts:11:8 › TDA-S-007 In-memory store & IDs › [AC: TDA-020] 連続1000件作成でも id 一意
+[1A[2K[12/29] [chromium] › tests/e2e/ac_toggle.spec.ts:9:3 › TDA-S-004 Toggle task done (UI + API) › [AC: TDA-012] クリックで PATCH /api/tasks/:id {done} → 200、UIは aria-checked 反映
+[1A[2K[13/29] [chromium] › tests/e2e/ac_toggle.spec.ts:19:3 › TDA-S-004 Toggle task done (UI + API) › [AC: TDA-013] 再クリックで元に戻せる（永続化）
+[1A[2K[14/29] [chromium] › tests/e2e/ac_ui_list.spec.ts:9:3 › TDA-S-002 UI — Render task list › [AC: TDA-005] [role="list"][aria-label="tasks"] が存在
+[1A[2K[15/29] [chromium] › tests/e2e/ac_ui_list.spec.ts:14:3 › TDA-S-002 UI — Render task list › [AC: TDA-008] 0件時 “No tasks yet.” を表示
+[1A[2K[16/29] [chromium] › tests/e2e/ac_ui_list.spec.ts:19:3 › TDA-S-002 UI — Render task list › [AC: TDA-006] 取得タスクが listitem として title 表示
+[1A[2K[17/29] [chromium] › tests/e2e/ac_ui_list.spec.ts:29:3 › TDA-S-002 UI — Render task list › [AC: TDA-007] 新しい順（createdAt 降順）で表示
+[1A[2K[18/29] [chromium] › tests/e2e/ac_validation.spec.ts:9:3 › TDA-S-006 Validation & errors (contract) › [AC: TDA-016] 空/空白のみ title は 400 {error:"TITLE_REQUIRED"}、UIは #new_task 近傍に role="alert" 表示
+[1A[2K[19/29] [chromium] › tests/e2e/ac_validation.spec.ts:18:3 › TDA-S-006 Validation & errors (contract) › [AC: TDA-017] 未存在 :id の PATCH は 404 {error:"NOT_FOUND"}
+[1A[2K[20/29] [chromium] › tests/e2e/ac_validation.spec.ts:28:3 › TDA-S-006 Validation & errors (contract) › [AC: TDA-017] 未存在 :id の DELETE は 404 {error:"NOT_FOUND"}
+[1A[2K[21/29] [chromium] › tests/e2e/ac_validation.spec.ts:35:3 › TDA-S-006 Validation & errors (contract) › [AC: TDA-018] 非boolean の done は 400 {error:"INVALID_DONE"}
+[1A[2K[22/29] [chromium] › tests/e2e/api.spec.ts:3:1 › GET /api/tasks returns JSON array sorted desc
+[1A[2K[23/29] [chromium] › tests/e2e/plan_api.spec.ts:13:3 › POST /api/plan (contract) › happy path: 200 + json + Trip shape + inclusive days (<3s)
+[1A[2K[24/29] [chromium] › tests/e2e/plan_api.spec.ts:48:3 › POST /api/plan (contract) › 400: destination required
+[1A[2K[25/29] [chromium] › tests/e2e/plan_api.spec.ts:62:3 › POST /api/plan (contract) › 400: date format
+[1A[2K[26/29] [chromium] › tests/e2e/plan_api.spec.ts:75:3 › POST /api/plan (contract) › 400: date order (start_date <= end_date)
+[1A[2K[27/29] [chromium] › tests/e2e/trip_plan.spec.ts:4:3 › Trip Planner (Itinerary) MVP › happy path: generate itinerary within 3s and render in result region
+[1A[2K[28/29] [chromium] › tests/e2e/trip_plan.spec.ts:24:3 › Trip Planner (Itinerary) MVP › validation errors surfaced near fields
+[1A[2K[29/29] [chromium] › tests/e2e/ui.spec.ts:3:1 › renders tasks list container
+[1A[2K  2 skipped
+  27 passed (3.6s)
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report[39m
+[36m[39m

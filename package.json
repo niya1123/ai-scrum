@@ -1,0 +1,46 @@
+{
+  "name": "ai-scrum-tasks",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p $PORT",
+    "build": "next build",
+    "start": "next start -p $PORT",
+    "domain": "tsx scripts/run-domain.ts",
+    "domain:po": "START_FROM=po tsx scripts/run-domain.ts",
+    "domain:architect": "START_FROM=architect tsx scripts/run-domain.ts",
+    "domain:planner": "START_FROM=planner tsx scripts/run-domain.ts",
+    "domain:dev": "START_FROM=dev tsx scripts/run-domain.ts",
+    "domain:qa": "START_FROM=qa tsx scripts/run-domain.ts",
+    "domain:docs": "START_FROM=docs tsx scripts/run-domain.ts",
+    "test:e2e": "node scripts/run-e2e-local.mjs",
+    "test:e2e:headed": "playwright test -c config/playwright.config.ts --headed",
+    "test:e2e:local": "PLAYWRIGHT_HEADLESS=1 node scripts/run-e2e-local.mjs",
+    "test:e2e:local:dev": "PLAYWRIGHT_WEB_SERVER_MODE=dev PLAYWRIGHT_HEADLESS=1 node scripts/run-e2e-local.mjs",
+    "test:e2e:ci": "PLAYWRIGHT_WEB_SERVER_MODE=prod PLAYWRIGHT_HEADLESS=1 PLAYWRIGHT_JSON_REPORT=playwright-report/results.json node scripts/run-e2e-local.mjs",
+    "qa:start-server": "node scripts/start-qa-server.mjs",
+    "qa:summary": "node scripts/generate-qa-summary.mjs",
+    "migrate:out": "node scripts/migrate-out-structure.mjs",
+    "test:unit": "tsx --test tests/unit/**/*.test.ts"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "next": "^14.2.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "date-fns": "^3.6.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "dotenv": "^16.4.5",
+    "tsx": "^4.15.7",
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.37",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,36 @@
+
+> ai-scrum-tasks@0.1.0 test:e2e:local:dev
+> PLAYWRIGHT_WEB_SERVER_MODE=dev PLAYWRIGHT_HEADLESS=1 node scripts/run-e2e-local.mjs trip_plan.spec.ts
+
+
+> ai-scrum-tasks@0.1.0 dev
+> next dev -p $PORT
+
+  ▲ Next.js 14.2.32
+  - Local:        http://localhost:55331
+
+ ✓ Starting...
+ ✓ Ready in 1009ms
+ ○ Compiling / ...
+ ✓ Compiled / in 832ms (459 modules)
+ GET / 200 in 914ms
+
+Running 2 tests using 1 worker
+
+[1A[2K[1/2] [chromium] › tests/e2e/trip_plan.spec.ts:4:3 › Trip Planner (Itinerary) MVP › happy path: generate itinerary within 3s and render in result region
+ ✓ Compiled /trip in 169ms (451 modules)
+ GET /trip 200 in 269ms
+ ✓ Compiled /api/plan in 126ms (285 modules)
+ POST /api/plan 200 in 158ms
+[1A[2K[2/2] [chromium] › tests/e2e/trip_plan.spec.ts:24:3 › Trip Planner (Itinerary) MVP › validation errors surfaced near fields
+ GET /trip 200 in 28ms
+ POST /api/plan 400 in 10ms
+ POST /api/plan 400 in 4ms
+ POST /api/plan 400 in 3ms
+[1A[2K  2 passed (2.2s)
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report[39m
+[36m[39m
+[?25h

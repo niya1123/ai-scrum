@@ -1,0 +1,4 @@
+/* Minimal reset and layout */
+:root { color-scheme: light dark; }
+body { margin: 0; padding: 16px; }
+input, button { font: inherit; }

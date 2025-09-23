@@ -20,11 +20,27 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@/domain/*": [
-        "src/domain/*"
+      "@trip": [
+        "trip/src/index.ts"
+      ],
+      "@trip/*": [
+        "trip/src/*"
+      ],
+      "@todo": [
+        "todo/src/index.ts"
+      ],
+      "@todo/*": [
+        "todo/src/*"
+      ],
+      "@/domain/trip": [
+        "trip/src/index.ts"
+      ],
+      "@/domain/task": [
+        "todo/src/index.ts"
       ],
       "@/adapters/*": [
-        "src/adapters/*"
+        "trip/src/adapters/*",
+        "todo/src/adapters/*"
       ],
       "@/lib/*": [
         "src/lib/*"

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { validatePlanInput, type Trip } from 'src/domain/trip'
+import { validatePlanInput, type Trip } from '@trip'
 import { getItineraryPlanner } from '@/lib/container'
 
 export const runtime = 'nodejs'

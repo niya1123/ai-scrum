@@ -1,6 +1,6 @@
 "use client"
 import { useState } from 'react'
-import type { Trip } from 'src/domain/trip'
+import type { Trip } from '@trip'
 
 type FieldErrors = Record<string, string>
 

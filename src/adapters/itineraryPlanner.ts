@@ -1,12 +1,2 @@
-import type { Trip } from '../domain/trip'
-
-export type PlannerParams = {
-  destination: string
-  startDate: string
-  endDate: string
-}
-
-export interface ItineraryPlanner {
-  generateTrip(params: PlannerParams): Trip
-}
-
+export type { Trip } from '../../trip/src/index'
+export type { PlannerParams, ItineraryPlanner } from '../../trip/src/ports/itineraryPlanner'

@@ -1,13 +1,13 @@
-import type { TaskStore } from '@/adapters/taskStore'
-import { MemoryTaskStore } from '@/adapters/memoryTaskStore'
+import type { TaskStore } from '@todo'
+import { MemoryTaskStore } from '@todo'
 
 declare global {
   // eslint-disable-next-line no-var
   var __taskStore: TaskStore | undefined
 }
 
-import type { ItineraryPlanner } from '@/adapters/itineraryPlanner'
-import { simpleItineraryPlanner } from '@/adapters/simpleItineraryPlanner'
+import type { ItineraryPlanner } from '@trip'
+import { simpleItineraryPlanner } from '@trip'
 
 declare global {
   // eslint-disable-next-line no-var

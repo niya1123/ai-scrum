@@ -23,7 +23,7 @@
     "qa:start-server": "node scripts/start-qa-server.mjs",
     "qa:summary": "node scripts/generate-qa-summary.mjs",
     "migrate:out": "node scripts/migrate-out-structure.mjs",
-    "test:unit": "tsx --test tests/unit/**/*.test.ts"
+    "test:unit": "tsx --test tests/unit/**/*.test.ts todo/tests/unit/**/*.test.ts trip/tests/unit/**/*.test.ts"
   },
   "engines": {
     "node": ">=18"

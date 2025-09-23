@@ -133,10 +133,36 @@ export default function GameUI() {
     )
   }, [loadState])
 
-  const handleCellClick = useCallback(() => {
-    // Moves API is not implemented yet in BE.
-    // For now, do nothing. Once BE-API-002 lands, wire POST /moves here.
-  }, [])
+  const handleCellClick = useCallback(
+    async (row: number, col: number) => {
+      if (loadState.status !== "loaded") return
+      const id = loadState.gameId
+      try {
+        const res = await fetch(`/api/quantum-gomoku/games/${id}/moves`, {
+          method: "POST",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: JSON.stringify({
+            playerId: loadState.gameState.currentPlayer,
+            position: { row, col },
+          }),
+        })
+        const data = await res.json().catch(() => null)
+        if (!res.ok) {
+          // Error model: { code }
+          const code = data && typeof data.code === 'string' ? data.code : `HTTP_${res.status}`
+          setLoadState({ status: "error", message: code })
+          // Re-fetch to ensure state unchanged after errors (QGM-009)
+          await fetchGame(id)
+          return
+        }
+        const next = data as { gameState: GameState }
+        setLoadState({ status: "loaded", gameId: id, gameState: next.gameState })
+      } catch (e) {
+        setLoadState({ status: "error", message: "Network error" })
+      }
+    },
+    [loadState, fetchGame]
+  )
 
   return (
     <main>
@@ -190,10 +216,7 @@ export default function GameUI() {
       {loadState.status === "loaded" && (
         <>
           {statusBar}
-          <BoardView board={loadState.gameState.board} onCellClick={handleCellClick} disabled />
-          <div style={{ marginTop: 12, opacity: 0.7 }}>
-            Moves/Observe coming soon (awaiting BE endpoints).
-          </div>
+          <BoardView board={loadState.gameState.board} onCellClick={handleCellClick} />
         </>
       )}
     </main>

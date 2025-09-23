@@ -677,6 +677,17 @@ async function main() {
       return;
     }
 
+    // Optional gate: ensure spec-declared endpoints exist before running QA
+    if (String(process.env.ENFORCE_SPEC_COVERAGE || '0') !== '0') {
+      logSection("5) Spec Coverage Gate (optional)");
+      try {
+        await run("tsx scripts/spec-coverage.ts")
+      } catch (e) {
+        console.error("Spec coverage gate failed. Set ENFORCE_SPEC_COVERAGE=0 to bypass.")
+        throw e
+      }
+    }
+
     logSection("5) QA: 受け入れテスト");
     if (should("qa")) {
       const qaPort = await getEphemeralPort();

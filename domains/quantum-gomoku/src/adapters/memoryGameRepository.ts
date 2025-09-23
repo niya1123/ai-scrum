@@ -12,5 +12,8 @@ export class MemoryGameRepository implements GameRepository {
   get(id: string): GameState | undefined {
     return this.store.get(id)
   }
-}
 
+  save(game: GameState): void {
+    this.store.set(game.id, game)
+  }
+}

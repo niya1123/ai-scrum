@@ -54,6 +54,17 @@ export function BoardView({ board, onCellClick, disabled }: BoardProps) {
             {cell ? (
               <span
                 aria-label={cell.observedColor ?? cell.placedBy}
+                data-testid="stone"
+                data-stone-player={cell.placedBy}
+                data-stone-observed={cell.observedColor ? "true" : "false"}
+                className={
+                  `marker ` +
+                  (
+                    (cell.observedColor ?? cell.placedBy) === "BLACK"
+                      ? "marker--black"
+                      : "marker--white"
+                  )
+                }
                 style={{
                   width: 18,
                   height: 18,
@@ -76,4 +87,3 @@ export function BoardView({ board, onCellClick, disabled }: BoardProps) {
     </div>
   )
 }
-

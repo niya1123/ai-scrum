@@ -9,6 +9,7 @@
     "build": "next build",
     "start": "next start -p $PORT",
     "domain": "tsx scripts/run-domain.ts",
+    "check:spec": "tsx scripts/spec-coverage.ts",
     "domain:po": "START_FROM=po tsx scripts/run-domain.ts",
     "domain:architect": "START_FROM=architect tsx scripts/run-domain.ts",
     "domain:planner": "START_FROM=planner tsx scripts/run-domain.ts",

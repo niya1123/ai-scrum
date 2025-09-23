@@ -156,13 +156,17 @@ npm run test:e2e -- tests/e2e/ui/quantum-gomoku.min-ui.spec.ts
 
 ## Quantum Gomoku — 新規ドメイン（API/最小UI）
 
-- DOMAIN_SPEC: `domains/quantum-gomoku/quantum-gomoku.md`（必要に応じて `export DOMAIN_SPEC=...` を設定）
+- DOMAIN_SPEC: `domains/quantum-gomoku/quantum-gomoku.md`（`npm run domain quantum` もしくは `npm run domain gomoku` で自動設定）
 - 実装ルート: `domains/quantum-gomoku/src/`
 - アダプタ差替点: `GameRepository`（デフォルトはメモリ実装）。
 
-エンドポイント（MVP-001）
+エンドポイント（MVP-001〜003）
 - POST `/api/quantum-gomoku/games` → 201 `{ gameId, gameState }`
 - GET `/api/quantum-gomoku/games/:id` → 200（移行中: UI はフラット/ラップ両対応）／404 `{ code: 'NOT_FOUND' }`
+- POST `/api/quantum-gomoku/games/:id/moves` → 200 `{ gameState }`
+  - 400 `{ code: 'INVALID_POSITION' | 'CELL_OCCUPIED' }`
+  - 409 `{ code: 'OUT_OF_TURN' }`
+  - 404 `{ code: 'NOT_FOUND' }`
 
 GameState（抜粋）
 - `status='playing'`, `currentPlayer='BLACK'`, `winner=null`
@@ -176,14 +180,26 @@ PORT=3000 npm run dev
 
 # UI（最小）
 # 1) http://localhost:3000/ を開くと新規ゲームが作成され 15x15 盤面が描画されます
-# 2) 既存ゲーム ID を入力して Load で復元（UUID v4 形式チェック/404 エラーハンドリングあり）
+# 2) セレクタ: `[data-testid="board"]`（role=grid）, 各セル `[data-testid="cell-<row>-<col>"]`（role=gridcell）
+# 3) 盤面の空セルをクリックすると現在の手番で確率未観測石が配置され、UI が再描画されます
+# 4) 既存ゲーム ID を入力して Load で復元（UUID v4 形式チェック/404 エラーハンドリングあり）
 
 # UI E2E（最小）
 npm run test:e2e -- tests/e2e/ui/quantum-gomoku.min-ui.spec.ts
 
-# E2E（Playwright） — MVP-001 を検証
+# E2E（Playwright） — MVP-001/003 を検証
 npx playwright install --with-deps
 PLAYWRIGHT_WEB_SERVER_MODE=dev npm run test:e2e -- tests/e2e/quantum-gomoku.mvp-001.spec.ts
+PLAYWRIGHT_WEB_SERVER_MODE=dev npm run test:e2e -- tests/e2e/quantum-gomoku.mvp-003-move.spec.ts
+```
+
+仕様と実装の乖離を防ぐためのチェック（任意ゲート）
+```
+# 事前に spec から宣言された API エンドポイントが Next.js ルートとして存在するか検査
+DOMAIN_SPEC=domains/quantum-gomoku/quantum-gomoku.md npm run check:spec
+
+# Orchestrator 実行時にゲートとして有効化（不足があれば失敗）
+ENFORCE_SPEC_COVERAGE=1 npm run domain quantum
 ```
 
 契約メモ（移行期間）
@@ -279,6 +295,7 @@ docs/
   - セル: `[data-testid="cell-<row>-<col>"]` / `role=gridcell`
   - 新規作成: `[data-testid="new-game"]`
   - 復元: `#existing_id` + `[data-testid="load-game"]`（UUID v4 チェック、404 エラー時 `role=alert`）
+  - 石マーカー: `[data-testid="stone"]`（`.marker--black` / `.marker--white`、`data-stone-player`/`data-stone-observed`）
 - 入力 `#new_task`
 - リスト `[role="list"][aria-label="tasks"]` とアイテム `[role="listitem"]`
 - トグル `[role="checkbox"]`（`aria-checked` 付き）

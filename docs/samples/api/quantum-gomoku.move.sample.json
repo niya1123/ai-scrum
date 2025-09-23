@@ -1,0 +1,18 @@
+{
+  "request": {
+    "method": "POST",
+    "path": "/api/quantum-gomoku/games/{id}/moves",
+    "body": { "playerId": "BLACK", "position": { "row": 7, "col": 7 } }
+  },
+  "successResponse": {
+    "status": 200,
+    "body": { "gameState": { "id": "...", "turnCount": 1, "currentPlayer": "WHITE", "board": "15x15", "lastMover": "BLACK" } }
+  },
+  "errorResponses": [
+    { "status": 400, "body": { "code": "INVALID_POSITION" } },
+    { "status": 400, "body": { "code": "CELL_OCCUPIED" } },
+    { "status": 409, "body": { "code": "OUT_OF_TURN" } },
+    { "status": 404, "body": { "code": "NOT_FOUND" } }
+  ]
+}
+

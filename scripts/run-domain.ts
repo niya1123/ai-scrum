@@ -8,6 +8,12 @@ function mapKeywordToSpec(keyword?: string): string {
   if (!k) return 'domains/examples/travel-planner.md'
   if (['travel', 'trip', 'planner', 'travel-planner'].includes(k)) return 'domains/examples/travel-planner.md'
   if (['todo', 'todos', 'todo-app'].includes(k)) return 'domains/examples/todo-app.md'
+  // Quantum Gomoku domain specs
+  if (['qgomoku', 'quantum', 'quantum-gomoku', 'gomoku'].includes(k)) {
+    // Prefer the canonical spec path under quantum-gomoku. If a user really wants
+    // to use domains/gomoku/gomoku.md, they can pass the full path explicitly.
+    return 'domains/quantum-gomoku/quantum-gomoku.md'
+  }
   return keyword as string
 }
 
@@ -44,4 +50,3 @@ async function main() {
 }
 
 main().catch((e) => { console.error(e); process.exit(1) })
-

@@ -41,9 +41,6 @@
       "@/adapters/*": [
         "trip/src/adapters/*",
         "todo/src/adapters/*"
-      ],
-      "@/lib/*": [
-        "src/lib/*"
       ]
     },
     "plugins": [

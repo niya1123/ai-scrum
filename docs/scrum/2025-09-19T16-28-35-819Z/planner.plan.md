@@ -6,7 +6,7 @@ This plan decomposes the PO backlog into actionable tasks by role with estimates
 - App: Next.js 14 (App Router, Node runtime)
 - Language: TypeScript
 - E2E: Playwright (`config/playwright.config.ts`)
-- In-memory store adapter: `src/adapters/memoryTaskStore.ts`
+- In-memory store adapter: `todo/src/adapters/memoryTaskStore.ts`
 
 How to run E2E locally:
 - Install browsers once: `npx playwright install --with-deps`
@@ -57,11 +57,11 @@ TDA-S-007 In‑memory store & IDs
 
 Cross-cutting / Infra
 - QA: Playwright webServer uses `PORT` env; baseURL bound; reset helpers — S — deps: none
-- Dev-BE: Maintain adapter DI (`src/lib/container.ts`) — S — deps: none
+- Dev-BE: Maintain adapter DI (`@todo/container`) — S — deps: none
 - Docs: Keep `docs/samples/api/` updated — S — deps: features
 
-## E2E Skeletons (tests/e2e)
-Implemented as Playwright specs with AC-tagged titles. See also `tests/e2e/_plan.md` for stepwise scenarios.
+## E2E Skeletons (todo/tests/e2e)
+Implemented as Playwright specs with AC-tagged titles. See also `todo/tests/e2e/_plan.md` for stepwise scenarios.
 - ac_api_list.spec.ts — TDA-001..004
 - ac_ui_list.spec.ts — TDA-005..008
 - ac_create.spec.ts — TDA-009..011

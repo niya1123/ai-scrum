@@ -45,15 +45,11 @@
 ├─ out/
 │  └─ logs/.gitkeep          # 実行時ログ配置先
 ├─ trip/
-│  └─ src/                   # Trip ドメイン（型/検証/ポート/実装）
+│  ├─ src/                   # Trip ドメイン（型/検証/ポート/実装）
+│  └─ tests/                 # Trip のテスト（e2e, unit）
 ├─ todo/
-│  └─ src/                   # Todo(Tasks) ドメイン（型/ポート/実装）
-├─ src/
-│  └─ lib/container.ts       # DI コンテナ（@trip/@todo を束ねる）
-├─ tests/
-│  └─ e2e/
-│     ├─ api.spec.ts         # API のベースライン E2E
-│     └─ ui.spec.ts          # UI のベースライン E2E
+│  ├─ src/                   # Todo(Tasks) ドメイン（型/ポート/実装）
+│  └─ tests/                 # Todo のテスト（e2e, unit）
 ├─ .gitignore
 ├─ LICENSE
 ├─ next.config.mjs
@@ -120,7 +116,7 @@ npx playwright install --with-deps
 QA 向けメモ
 - `npm run test:e2e*` は Next.js サーバーを自動で起動・停止し、空きポート割り当てと `BASE_URL` の設定も行います。
 - MCP や手動検証で Playwright CLI を使わない場合は、先に `npm run qa:start-server` でサーバーを起動し、`BASE_URL`（デフォルト http://localhost:3000）にアクセスしてください。
-- シナリオ分離には `tests/e2e/_helpers.ts::resetTasks` を使用します（各 spec が `beforeEach` で実行済み）。
+- シナリオ分離には `todo/tests/e2e/_helpers.ts::resetTasks` を使用します（各 spec が `beforeEach` で実行済み）。
 - UI セレクタはアクセシビリティ優先で安定しています: `#new_task`, `[role="list"][aria-label="tasks"]`, `[role="listitem"]`, `[role="checkbox"]`, `div[role="alert"]`。
 - 並び順は API (`createdAt` 降順) で保証され、UI でもその順序のまま描画されます。
 
@@ -147,20 +143,66 @@ npm run test:e2e:local
 
 # 単一ファイル実行例
 # API リストのみ
-PLAYWRIGHT_WEB_SERVER_MODE=dev node scripts/run-e2e-local.mjs tests/e2e/ac_api_list.spec.ts
+PLAYWRIGHT_WEB_SERVER_MODE=dev node scripts/run-e2e-local.mjs todo/tests/e2e/ac_api_list.spec.ts
 # UI リストのみ
-PLAYWRIGHT_WEB_SERVER_MODE=dev node scripts/run-e2e-local.mjs tests/e2e/ac_ui_list.spec.ts
+PLAYWRIGHT_WEB_SERVER_MODE=dev node scripts/run-e2e-local.mjs todo/tests/e2e/ac_ui_list.spec.ts
 # Trip Planner のみ
-npm run test:e2e -- tests/e2e/trip_plan.spec.ts
+npm run test:e2e -- trip/tests/e2e/trip_plan.spec.ts
 ```
 
+## ドメイン別レイアウト指針（trip/, todo/）
+- 目的: ドメインごとにコードとテストを完結させ、疎結合に保つ。
+
+- 物理構成（共通）
+  ```
+  <domain>/
+  ├─ src/
+  │  ├─ index.ts                  # ドメインの公開API（型/関数のエントリ）
+  │  ├─ ports/                    # ポート（インタフェース）
+  │  ├─ adapters/                 # アダプタ実装（モック/実装差替点）
+  │  └─ container.ts              # 軽量DI（シングルトンの提供元）
+  └─ tests/
+     ├─ e2e/                      # ドメインE2E（Playwright）
+     └─ unit/                     # 単体テスト（node:test 等）
+  ```
+
+- パスエイリアス（tsconfig）
+  - Trip: `@trip`, `@trip/*` → `trip/src/*`
+  - Todo: `@todo`, `@todo/*` → `todo/src/*`
+  - 互換: `@/domain/trip` → Trip、`@/domain/task` → Todo（段階的移行用）
+
+- 依存ルール
+  - `app/*`（Next UI/API）は各ドメインの `container.ts` のみ参照（例: `@trip/container`, `@todo/container`）。
+  - ドメイン間は直接参照しない（必要なら上位層で調停）。
+  - ドメイン内の import は `@trip/*` / `@todo/*` を優先。
+
+- DI/コンテナ
+  - `container.ts` は小さなシングルトン・ファクトリ。差し替えはここで行う。
+  - 例: `trip/src/container.ts` の `getItineraryPlanner()` を別アダプタに差し替える。
+
+- テスト配置
+  - E2E は `trip/tests/e2e/*`, `todo/tests/e2e/*` に配置。
+  - Playwright は `config/playwright.config.ts` の `testMatch` で両方を収集済み。
+  - Unit は `trip/tests/unit/*`, `todo/tests/unit/*` に配置し、`npm run test:unit` で併走。
+
+- 命名/スタイル
+  - ポート: 名詞インタフェース（例: `ItineraryPlanner`, `TaskStore`）。
+  - アダプタ: 接尾辞つき（例: `simpleItineraryPlanner.ts`, `memoryTaskStore.ts`）。
+  - 公開面: `index.ts` で集約エクスポート（外部に漏らす記号を最小化）。
+
+- 追加例（Tripに新アルゴリズムを追加）
+  1) `trip/src/adapters/aiItineraryPlanner.ts` を追加
+  2) 必要なら `trip/src/index.ts` で再エクスポート
+  3) `trip/src/container.ts` の初期値を差し替え、または環境変数で切替
+  4) E2E/Unit を `trip/tests/**` に追加し、`npm run test:e2e:local:dev` / `npm run test:unit` で検証
+
 ### AC ごとの E2E カバレッジ
-- UI リスト: `tests/e2e/ac_ui_list.spec.ts`（ロール/ラベル、空状態、並び順）
-- 作成: `tests/e2e/ac_create.spec.ts`（Enter 送信、先頭追加、入力クリア）
-- トグル: `tests/e2e/ac_toggle.spec.ts`（`aria-checked` の永続化）
-- 削除: `tests/e2e/ac_delete.spec.ts`（`data-testid="delete-task"`、空状態）
-- バリデーション: `tests/e2e/ac_validation.spec.ts`（400/404/invalid）— 稼働中で合格（TDA-016..018）
-- トリッププランナー: `tests/e2e/trip_plan.spec.ts`（TPA-009..016, TPA-014）
+- UI リスト: `todo/tests/e2e/ac_ui_list.spec.ts`（ロール/ラベル、空状態、並び順）
+- 作成: `todo/tests/e2e/ac_create.spec.ts`（Enter 送信、先頭追加、入力クリア）
+- トグル: `todo/tests/e2e/ac_toggle.spec.ts`（`aria-checked` の永続化）
+- 削除: `todo/tests/e2e/ac_delete.spec.ts`（`data-testid="delete-task"`、空状態）
+- バリデーション: `todo/tests/e2e/ac_validation.spec.ts`（400/404/invalid）— 稼働中で合格（TDA-016..018）
+- トリッププランナー: `trip/tests/e2e/trip_plan.spec.ts`（TPA-009..016, TPA-014）
 
 注目セレクタ:
 - 入力 `#new_task`
@@ -179,7 +221,7 @@ npm run test:e2e -- tests/e2e/trip_plan.spec.ts
 - エラー契約: `POST /api/tasks` の無効入力は 400 `{error:"TITLE_REQUIRED"}`、`PATCH/DELETE /api/tasks/:id` の未存在 ID は 404 `{error:"TASK_NOT_FOUND"}`、`PATCH` の非 boolean `done` は 400 `{error:"DONE_REQUIRED"}`。
 
 ## 拡張ポイント（アダプタ）
-- `src/lib/container.ts` の DI を変更することで、`@todo` / `@trip` の実装を差し替え可能です。
+- DI の差し替えポイントは `@todo/container` と `@trip/container` にあります。
 
 ## アーキテクチャ選択肢
 - オプション A（採用済み）: Next.js App Router + TypeScript
@@ -195,7 +237,7 @@ npm run test:e2e -- tests/e2e/trip_plan.spec.ts
 ## リポジトリ運用
 - バックログ/Planner成果物: `docs/scrum/<RUN_ID>/backlog.po.md` と `docs/scrum/<RUN_ID>/planner.plan.md`（不要になったRUN_IDを削除する場合はディレクトリごと削除）
 - レトロ共有: `share/retro/latest.md`（QA/PO向け）。履歴は `share/retro/<RUN_ID>.md` を参照。
-- E2E テスト: `tests/e2e/`
+- E2E テスト: `todo/tests/e2e/`, `trip/tests/e2e/`
 - 実行時ログ: `out/logs/`
 
 ---
@@ -232,7 +274,7 @@ docs/domains/travel-planner/samples/api/
 ├─ plan.md                     # 仕様/リクエスト・レスポンス例
 ├─ plan-request.json
 └─ plan-response.json
-tests/e2e/
+ trip/tests/e2e/
 └─ trip_plan.spec.ts           # UIハッピーシナリオ/検証/3秒以内
 out/logs/.gitkeep              # 実行時ログ配置規約
 ```
@@ -273,8 +315,8 @@ npm run test:e2e:local
 - エラー集約: `#form-errors[role="alert"]`（フィールド下のエラーテキストは `id="err-<field>"` を持ち、`aria-describedby` で関連付け）
 
 ## テスト/E2E
-- `tests/e2e/trip_plan.spec.ts` がハッピーシナリオ/検証/3秒以内を担保。
+- `trip/tests/e2e/trip_plan.spec.ts` がハッピーシナリオ/検証/3秒以内を担保。
 - Playwright 設定は `config/playwright.config.ts` を再利用（env駆動、`reuseExistingServer: true`, `timeout~40s`, `reporter: html`）。
 
 ## 拡張点（Adapter）
-- 置換可能ポイント: `src/adapters/itineraryPlanner.ts`（例: 他サービス連携版を実装し DI で差し替え）。
+- 置換可能ポイント: `trip/src/ports/itineraryPlanner.ts`（例: 他サービス連携版を実装し、`@trip/container` の DI で差し替え）。

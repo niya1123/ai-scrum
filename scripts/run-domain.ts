@@ -3,10 +3,12 @@ import { existsSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 
+const DEFAULT_TRAVEL_SPEC = 'domains/examples/travel-planner/travel-planner-plan.md'
+
 function mapKeywordToSpec(keyword?: string): string {
   const k = (keyword || '').toLowerCase()
-  if (!k) return 'domains/examples/travel-planner.md'
-  if (['travel', 'trip', 'planner', 'travel-planner'].includes(k)) return 'domains/examples/travel-planner.md'
+  if (!k) return DEFAULT_TRAVEL_SPEC
+  if (['travel', 'trip', 'planner', 'travel-planner'].includes(k)) return DEFAULT_TRAVEL_SPEC
   if (['todo', 'todos', 'todo-app'].includes(k)) return 'domains/examples/todo-app.md'
   return keyword as string
 }
@@ -26,7 +28,7 @@ async function main() {
   const mapped = mapKeywordToSpec(specArg)
   const specPath = mapped && !mapped.startsWith('.') && !mapped.startsWith('/')
     ? join(process.cwd(), mapped)
-    : resolve(process.cwd(), mapped || 'domains/examples/travel-planner.md')
+    : resolve(process.cwd(), mapped || DEFAULT_TRAVEL_SPEC)
 
   if (!existsSync(specPath)) {
     console.error(`Domain spec not found: ${specPath}`)
@@ -44,4 +46,3 @@ async function main() {
 }
 
 main().catch((e) => { console.error(e); process.exit(1) })
-

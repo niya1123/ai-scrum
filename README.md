@@ -7,8 +7,13 @@
    ```bash
    npm install
    ```
-2. `domains/<ドメイン名>/<ドメイン名>-plan.md` にドメイン計画書を追加します。
-3. パイプラインを実行します。
+2. 新しいドメインを作る場合は雛形を生成します。
+   ```bash
+   npm run domain:init travel-planner --title "Travel Planner MVP"
+   ```
+   既存ファイルがある場合は上書きせず、追記だけで済む構成になります。
+3. `domains/<ドメイン名>/<ドメイン名>-plan.md` を編集し、初期計画を整えます。
+4. パイプラインを実行します。
    ```bash
    npm run domain domains/<ドメイン名>/<ドメイン名>-plan.md
    ```
@@ -31,20 +36,22 @@
 空ディレクトリには `.gitkeep` を配置しており、成果物がまだ無い状態でもツリーが保たれます。`out/` や `docs/scrum/`、`share/retro/` は各実行で上書きされるため、必要なものだけをコミットしてください。
 
 ## よく使うコマンド
+- `npm run domain:init <slug>` — ドメインディレクトリと plan/spec 雛形を生成（既存ファイルは温存）。
 - `npm run domain` — PO→Docs を通しで実行。付属サンプルを使う場合は `travel` や `todo` などのキーワードも指定できます。
 - `npm run domain:<role>` — `po` / `architect` / `planner` / `dev` / `qa` / `docs` のいずれかから開始。
 - `npm run test:e2e` — Next.js アプリを起動し、`tests/e2e` 配下の Playwright テストを実行。
 - `npm run test:unit` — `tests/unit` 配下を対象に `tsx --test` を実行。
 
 ## 新しいドメインを追加するには
-1. 目的・アクター・AC を含む仕様を作成し、`domains/<名前>/<名前>-plan.md` に保存します。
-2. `npm run domain domains/<名前>/<名前>-plan.md` を実行します。
-3. 実行結果を `out/` 配下で確認します。
+1. `npm run domain:init <名前> --title "Nice Product"` で雛形を生成します（既存ならスキップ表示されます）。
+2. 目的・アクター・AC を含む仕様を `domains/<名前>/<名前>-plan.md` に追記します。詳細仕様は `domains/<名前>/<名前>-spec.md` に書き足していく運用が推奨です。
+3. `npm run domain domains/<名前>/<名前>-plan.md` を実行します。
+4. 実行結果を `out/` 配下で確認します。
    - `out/po/<RUN_ID>/` — PO が生成したバックログと AC
    - `out/planner/<RUN_ID>/` — Planner によるタスク分解とテスト雛形
    - `out/dev-*/<RUN_ID>/` — 各 Dev が出力したログや差分
    - `out/qa/<RUN_ID>/` — QA の E2E テスト結果
-4. 同じ仕様で別ロールから再開する場合は `npm run domain:<role>` に同じパスを渡します。
+5. 同じ仕様で別ロールから再開する場合は `npm run domain:<role>` に同じパスを渡します。
 
 ## ハウスキーピング
 - ログ (`*.log`) や過去の実行成果物は削除済みです。必要に応じて再生成してください。

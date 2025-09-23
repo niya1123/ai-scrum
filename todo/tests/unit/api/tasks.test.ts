@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import type { Task } from '@/domain/task'
-import { resetTaskStore } from '@/lib/container'
-import { GET, POST } from '../../../app/api/tasks/route'
-import { PATCH, DELETE } from '../../../app/api/tasks/[id]/route'
+import { resetTaskStore } from '@todo/container'
+import { GET, POST } from '../../../../app/api/tasks/route'
+import { PATCH, DELETE } from '../../../../app/api/tasks/[id]/route'
 
 const baseUrl = 'http://localhost/api/tasks'
 

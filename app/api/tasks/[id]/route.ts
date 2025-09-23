@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getTaskStore } from '@/lib/container'
+import { getTaskStore } from '@todo/container'
 
 export const runtime = 'nodejs'
 

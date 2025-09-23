@@ -44,12 +44,12 @@
 │     └─ latest.md                 # QA/PO 参照用の最新レトロ
 ├─ out/
 │  └─ logs/.gitkeep          # 実行時ログ配置先
+├─ trip/
+│  └─ src/                   # Trip ドメイン（型/検証/ポート/実装）
+├─ todo/
+│  └─ src/                   # Todo(Tasks) ドメイン（型/ポート/実装）
 ├─ src/
-│  ├─ adapters/
-│  │  ├─ memoryTaskStore.ts  # インメモリ TaskStore（既定）
-│  │  └─ taskStore.ts        # アダプタ インタフェース（拡張ポイント）
-│  ├─ domain/task.ts         # ドメインモデル型
-│  └─ lib/container.ts       # DI コンテナ（アダプタ差し替え用）
+│  └─ lib/container.ts       # DI コンテナ（@trip/@todo を束ねる）
 ├─ tests/
 │  └─ e2e/
 │     ├─ api.spec.ts         # API のベースライン E2E
@@ -179,7 +179,7 @@ npm run test:e2e -- tests/e2e/trip_plan.spec.ts
 - エラー契約: `POST /api/tasks` の無効入力は 400 `{error:"TITLE_REQUIRED"}`、`PATCH/DELETE /api/tasks/:id` の未存在 ID は 404 `{error:"TASK_NOT_FOUND"}`、`PATCH` の非 boolean `done` は 400 `{error:"DONE_REQUIRED"}`。
 
 ## 拡張ポイント（アダプタ）
-- `src/lib/container.ts` の `getTaskStore()` を変更することで、`src/adapters/memoryTaskStore.ts` を任意の実装に差し替え可能です。
+- `src/lib/container.ts` の DI を変更することで、`@todo` / `@trip` の実装を差し替え可能です。
 
 ## アーキテクチャ選択肢
 - オプション A（採用済み）: Next.js App Router + TypeScript
@@ -223,11 +223,11 @@ Architect scaffold が ❤️ を込めて作成しました。
 app/
 ├─ api/plan/route.ts           # POST /api/plan — Trip JSON を返却
 └─ trip/page.tsx               # 入力フォーム + 結果領域 (role=region, name=result)
-src/
-├─ domain/trip.ts              # Trip型/検証/日付列挙（拡張可能なドメイン層）
-└─ adapters/
-   ├─ itineraryPlanner.ts      # Adapter インタフェース（拡張点）
-   └─ simpleItineraryPlanner.ts# 既定のモック実装（3秒以内応答）
+trip/
+└─ src/
+   ├─ index.ts                 # Trip型/検証/日付列挙
+   ├─ ports/itineraryPlanner.ts# Adapter インタフェース（拡張点）
+   └─ adapters/simpleItineraryPlanner.ts # 既定のモック実装（3秒以内応答）
 docs/domains/travel-planner/samples/api/
 ├─ plan.md                     # 仕様/リクエスト・レスポンス例
 ├─ plan-request.json

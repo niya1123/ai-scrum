@@ -1,0 +1,50 @@
+#!/usr/bin/env node
+/**
+ * Non-interactive wrapper for Playwright CLI used during orchestrated Dev runs.
+ * Blocks commands that start long-running local servers (show-report, show-trace, codegen, open)
+ * which would stall the Codex JSON stream and trigger a STALL kill.
+ *
+ * Pass-through for other commands (e.g., `playwright test ...`).
+ * If you really need to bypass this (local debugging), set PLAYWRIGHT_WRAPPER_BYPASS=1.
+ */
+import { spawn } from 'node:child_process'
+import { join } from 'node:path'
+
+function main() {
+  if (process.env.PLAYWRIGHT_WRAPPER_BYPASS === '1') {
+    return execReal(process.argv.slice(2))
+  }
+  const args = process.argv.slice(2)
+  const sub = (args[0] || '').toLowerCase()
+  const isInteractive = ['show-report', 'show-trace', 'codegen', 'open'].includes(sub)
+  const noInteractive = process.env.NO_INTERACTIVE_CLI === '1'
+
+  if (noInteractive && isInteractive) {
+    const msg = [
+      '[blocked] Interactive Playwright command is disabled in orchestrated runs.',
+      `command: playwright ${args.join(' ')}`,
+      'Reason: It starts a local web server and waits for Ctrl+C, causing pipeline stalls.',
+      'Do instead:',
+      '- Inspect JSON report or artifacts under out/qa/<RUN_ID>/<ITER>/report/',
+      '- Read traces via files (trace.zip) without launching servers.',
+      'To bypass locally (not in CI): set PLAYWRIGHT_WRAPPER_BYPASS=1.'
+    ].join('\n')
+    console.error(msg)
+    process.exit(2)
+    return
+  }
+
+  return execReal(args)
+}
+
+function execReal(args: string[]) {
+  const cli = join(process.cwd(), 'node_modules', '@playwright', 'test', 'cli.js')
+  const child = spawn(process.execPath, [cli, ...args], { stdio: 'inherit', env: process.env })
+  child.on('exit', (code, signal) => {
+    if (signal) process.exit(137)
+    process.exit(code === null ? 1 : code)
+  })
+}
+
+main()
+

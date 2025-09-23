@@ -70,13 +70,15 @@ PORT=3000 npm run dev
 ```
 UI 表示: http://localhost:3000/
 
+注意: ルート `/` は Quantum Gomoku の最小UIに切り替わりました。既存の Tasks UI は `/tasks` に移動しています。
+
 トリッププランナー UI:
 - http://localhost:3000/trip にアクセスすると旅程作成 MVP フォームを利用できます。
 - 入力フィールド: `destination`, `start_date` (YYYY-MM-DD), `end_date` (YYYY-MM-DD)。
 - 「Plan Trip」ボタンで送信すると、結果は `[role="region"][aria-label="result"]` に表示されます。
 
-簡易確認（UI）:
-- `/` にアクセスし、空状態のテキスト "No tasks yet." を確認してください。
+簡易確認（Tasks UI）:
+- `/tasks` にアクセスし、空状態のテキスト "No tasks yet." を確認してください。
 - `[role=list][aria-label="tasks"]` を持つリストが存在し、アイテムが `[role=listitem]` として描画されていることを確認します。
 - `#new_task` に入力して Enter を押すとタスクが先頭に追加され、入力欄がクリアされます。
 
@@ -148,7 +150,74 @@ PLAYWRIGHT_WEB_SERVER_MODE=dev node scripts/run-e2e-local.mjs todo/tests/e2e/ac_
 PLAYWRIGHT_WEB_SERVER_MODE=dev node scripts/run-e2e-local.mjs todo/tests/e2e/ac_ui_list.spec.ts
 # Trip Planner のみ
 npm run test:e2e -- trip/tests/e2e/trip_plan.spec.ts
+# Quantum Gomoku（UI 最小動作）
+npm run test:e2e -- tests/e2e/ui/quantum-gomoku.min-ui.spec.ts
 ```
+
+## Quantum Gomoku — 新規ドメイン（API/最小UI）
+
+- DOMAIN_SPEC: `domains/quantum-gomoku/quantum-gomoku.md`（必要に応じて `export DOMAIN_SPEC=...` を設定）
+- 実装ルート: `domains/quantum-gomoku/src/`
+- アダプタ差替点: `GameRepository`（デフォルトはメモリ実装）。
+
+エンドポイント（MVP-001）
+- POST `/api/quantum-gomoku/games` → 201 `{ gameId, gameState }`
+- GET `/api/quantum-gomoku/games/:id` → 200（移行中: UI はフラット/ラップ両対応）／404 `{ code: 'NOT_FOUND' }`
+
+GameState（抜粋）
+- `status='playing'`, `currentPlayer='BLACK'`, `winner=null`
+- `turnCount=0`, `blackObservationsRemaining=5`, `whiteObservationsRemaining=5`
+- `board`: 15x15 の `null` 初期化
+
+動作確認
+```
+# 開発起動
+PORT=3000 npm run dev
+
+# UI（最小）
+# 1) http://localhost:3000/ を開くと新規ゲームが作成され 15x15 盤面が描画されます
+# 2) 既存ゲーム ID を入力して Load で復元（UUID v4 形式チェック/404 エラーハンドリングあり）
+
+# UI E2E（最小）
+npm run test:e2e -- tests/e2e/ui/quantum-gomoku.min-ui.spec.ts
+
+# E2E（Playwright） — MVP-001 を検証
+npx playwright install --with-deps
+PLAYWRIGHT_WEB_SERVER_MODE=dev npm run test:e2e -- tests/e2e/quantum-gomoku.mvp-001.spec.ts
+```
+
+契約メモ（移行期間）
+- GET `/games/:id` のレスポンスは P0 で `{ gameState }` へ統一予定です（Planner: MVP-001_get-contract）。
+- 互換のため UI は一時的にフラット（`GameState`）/ラップ（`{ gameState }`）の両方を許容する実装にしています（`domains/quantum-gomoku/src/ui/GameUI.tsx`）。
+- QA は API 契約と UI E2E の両観点で確認してください（UI は alerts=0 を担保）。
+
+ディレクトリ（抜粋）
+```
+domains/
+  quantum-gomoku/
+    quantum-gomoku.md
+    src/
+      index.ts
+      types.ts
+      errors.ts
+      container.ts
+      ports/
+        gameRepository.ts
+      adapters/
+        memoryGameRepository.ts
+app/
+  api/quantum-gomoku/games/route.ts            # POST /games
+  api/quantum-gomoku/games/[id]/route.ts        # GET /games/:id
+tests/
+  e2e/quantum-gomoku.mvp-001.spec.ts
+config/
+  playwright.config.ts
+docs/
+  samples/api/quantum-gomoku/
+    create-request.json
+    create-response.json
+```
+
 
 ## ドメイン別レイアウト指針（trip/, todo/）
 - 目的: ドメインごとにコードとテストを完結させ、疎結合に保つ。
@@ -205,6 +274,11 @@ npm run test:e2e -- trip/tests/e2e/trip_plan.spec.ts
 - トリッププランナー: `trip/tests/e2e/trip_plan.spec.ts`（TPA-009..016, TPA-014）
 
 注目セレクタ:
+- Quantum Gomoku UI:
+  - 盤: `[data-testid="board"]` / `role=grid`
+  - セル: `[data-testid="cell-<row>-<col>"]` / `role=gridcell`
+  - 新規作成: `[data-testid="new-game"]`
+  - 復元: `#existing_id` + `[data-testid="load-game"]`（UUID v4 チェック、404 エラー時 `role=alert`）
 - 入力 `#new_task`
 - リスト `[role="list"][aria-label="tasks"]` とアイテム `[role="listitem"]`
 - トグル `[role="checkbox"]`（`aria-checked` 付き）

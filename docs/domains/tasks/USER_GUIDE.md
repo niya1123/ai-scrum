@@ -39,3 +39,43 @@
 | エラーコード `DONE_REQUIRED` | チェックボックス操作時に通信失敗 | ネットワーク確認。再表示されない場合はリロード |
 | エラーコード `TASK_NOT_FOUND` | 既に削除されたIDを操作 | リストをリロード (`Cmd/Ctrl + R`) し最新状態を確認 |
 | リストが空のまま | サーバー停止または通信失敗 | ターミナルの Next.js ログを確認し、必要なら再起動 |
+
+## 制限
+- 入力: `title` はトリム後に空不可（最大200文字目安）。
+- 型: `done` は boolean のみ受理。それ以外は `DONE_REQUIRED`。
+- 識別子: `id` はサーバー発行の文字列（UUID）。外部から書き換え不可。
+- 同期: ローカル開発ではメモリ保持。サーバー再起動で初期化される場合あり。
+
+## 再現手順（APIベース）
+```http
+### 一覧
+GET http://localhost:3000/api/tasks
+accept: application/json
+
+### 作成（正常）
+POST http://localhost:3000/api/tasks
+content-type: application/json
+
+{ "title": "Buy milk" }
+
+### 作成（エラー: 空白）
+POST http://localhost:3000/api/tasks
+content-type: application/json
+
+{ "title": "  " }
+
+### 完了更新（正常）
+PATCH http://localhost:3000/api/tasks/{{taskId}}
+content-type: application/json
+
+{ "done": true }
+
+### 完了更新（エラー: 型不正）
+PATCH http://localhost:3000/api/tasks/{{taskId}}
+content-type: application/json
+
+{ "done": "yes" }
+
+### 削除（正常）
+DELETE http://localhost:3000/api/tasks/{{taskId}}
+```

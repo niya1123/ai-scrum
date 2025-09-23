@@ -1,0 +1,39 @@
+{
+  "gameState": {
+    "id": "example-game-id-1",
+    "status": "playing",
+    "currentPlayer": "WHITE",
+    "winner": null,
+    "board": [
+      [
+        {
+          "placedBy": "BLACK",
+          "turnPlaced": 1,
+          "probabilityType": "P90",
+          "observedColor": null
+        },
+        null,null,null,null,null,null,null,null,null,null,null,null,null,null
+      ],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
+      [null,null,null,null,null,null,null,null,null,null,null,null,null,null,null]
+    ],
+    "blackObservationsRemaining": 5,
+    "whiteObservationsRemaining": 5,
+    "turnCount": 1,
+    "createdAt": "2025-09-23T12:00:00.000Z",
+    "lastMover": "BLACK"
+  }
+}
+

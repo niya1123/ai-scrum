@@ -4,6 +4,7 @@
 ```bash
 curl -s ${BASE_URL:-http://localhost:3000}/api/tasks | jq .
 ```
+サンプル: `tasks.list.json`
 
 ## 新規作成
 - リクエスト/レスポンス例: `task.create.json`
@@ -27,6 +28,7 @@ curl -s -X PATCH \
 ```bash
 curl -s -X DELETE ${BASE_URL:-http://localhost:3000}/api/tasks/<id> | jq .
 ```
+サンプル: `task.delete.json`
 
 ## エラー応答
 ```bash

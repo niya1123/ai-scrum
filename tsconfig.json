@@ -32,6 +32,12 @@
       "@todo/*": [
         "todo/src/*"
       ],
+      "@qgomoku": [
+        "domains/quantum-gomoku/src/index.ts"
+      ],
+      "@qgomoku/*": [
+        "domains/quantum-gomoku/src/*"
+      ],
       "@/domain/trip": [
         "trip/src/index.ts"
       ],

@@ -5,7 +5,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <head>
-        <title>Tasks • AI Scrum</title>
+        <title>Quantum Gomoku • AI Scrum</title>
       </head>
       <body style={{ fontFamily: 'system-ui, sans-serif', margin: 0, padding: 16 }}>
         {children}

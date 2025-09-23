@@ -2,7 +2,7 @@
 import "dotenv/config";
 import { exec, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { existsSync, mkdirSync, writeFileSync, readFileSync, createWriteStream, appendFileSync, renameSync, rmSync, cpSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, readFileSync, createWriteStream, appendFileSync, renameSync, rmSync, cpSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { createServer } from "node:net";
 
@@ -19,6 +19,13 @@ const PARALLEL_DEVS = Number(process.env.PARALLEL_DEVS || 2); // 2 = FE/BE 並�
 const AUTO_DEV_AFTER_REPLAN = String(process.env.AUTO_DEV_AFTER_REPLAN || "1") !== "0"; // RED時: 再分解→Dev→QA を自動実行
 const PROGRESS_STYLE = process.env.PROGRESS_STYLE || "bar"; // bar | spinner | none
 const PROGRESS_INTERVAL = Number(process.env.PROGRESS_INTERVAL || 120); // ms
+// Dev stages often need longer uninterrupted reasoning time. Allow an override and use
+// a safer default (10 min) for Dev; others keep the general default (5 min).
+const DEFAULT_DEV_STALL_MS = Number(
+  process.env.CODEX_STALL_TIMEOUT_MS_DEV ||
+  process.env.CODEX_STALL_TIMEOUT_MS ||
+  10 * 60 * 1000
+);
 // MCP 要求は無効化（ローカル CLI 実行を前提）。
 // 環境変数で上書き可: QA_REQUIRE_MCP=1 で再有効化。
 const QA_REQUIRE_MCP = String(process.env.QA_REQUIRE_MCP || "0") !== "0";
@@ -157,6 +164,9 @@ async function runCodex({
       stdoutAll += text;
       if (jsonLogStream) jsonLogStream.write(text);
       lineBuf += text;
+      // Treat any stdout chunk as activity to avoid false stalls when a line
+      // has not been terminated by a newline yet (e.g., large JSON without \n).
+      lastActivityAt = Date.now();
       let idx: number;
       while ((idx = lineBuf.indexOf("\n")) >= 0) {
         const line = lineBuf.slice(0, idx);
@@ -354,11 +364,37 @@ type ManualArtifacts = {
   tasks?: string;
 };
 
-function resolveIfFile(pathLike: string, label: string): string {
+function resolveIfExists(pathLike: string, label: string): string {
   const abs = resolve(pathLike);
   if (!existsSync(abs)) {
     throw new Error(`指定された ${label} が見つかりません: ${abs}`);
   }
+  return abs;
+}
+
+function resolveBacklogArg(pathLike: string): string {
+  const abs = resolveIfExists(pathLike, "backlog 指定");
+  try {
+    const st = statSync(abs);
+    if (st.isDirectory()) {
+      const candidate = join(abs, "backlog.yml");
+      if (existsSync(candidate)) return candidate;
+      throw new Error(`--backlog にディレクトリが指定されましたが 'backlog.yml' が見つかりません: ${candidate}`);
+    }
+  } catch {}
+  return abs;
+}
+
+function resolveTasksArg(pathLike: string): string {
+  const abs = resolveIfExists(pathLike, "tasks 指定");
+  try {
+    const st = statSync(abs);
+    if (st.isDirectory()) {
+      const candidate = join(abs, "tasks.yml");
+      if (existsSync(candidate)) return candidate;
+      throw new Error(`--tasks にディレクトリが指定されましたが 'tasks.yml' が見つかりません: ${candidate}`);
+    }
+  } catch {}
   return abs;
 }
 
@@ -370,7 +406,7 @@ function parseManualArtifacts(args: string[]): ManualArtifacts {
     if (arg === "--backlog") {
       const next = args[++i];
       if (!next || next.startsWith("--")) {
-        throw new Error("'--backlog' オプションにはファイルパスを指定してください。");
+        throw new Error("'--backlog' オプションには backlog.yml へのファイルパス、またはそれを含むディレクトリを指定してください。");
       }
       res.backlog = next;
       continue;
@@ -382,7 +418,7 @@ function parseManualArtifacts(args: string[]): ManualArtifacts {
     if (arg === "--tasks") {
       const next = args[++i];
       if (!next || next.startsWith("--")) {
-        throw new Error("'--tasks' オプションにはファイルパスを指定してください。");
+        throw new Error("'--tasks' オプションには tasks.yml へのファイルパス、またはそれを含むディレクトリを指定してください。");
       }
       res.tasks = next;
       continue;
@@ -527,7 +563,7 @@ async function main() {
   let backlogCopied = false;
   let backlogSrcResolved: string | undefined;
   if (manualArtifacts.backlog) {
-    const backlogSrc = resolveIfFile(manualArtifacts.backlog, "backlog.yml");
+    const backlogSrc = resolveBacklogArg(manualArtifacts.backlog);
     backlogSrcResolved = backlogSrc;
     const backlogDst = join(PO_DIR, "backlog.yml");
     cpSync(backlogSrc, backlogDst, { force: true });
@@ -537,7 +573,7 @@ async function main() {
     }
   }
 
-  const tasksSrcExplicit = manualArtifacts.tasks ? resolveIfFile(manualArtifacts.tasks, "tasks.yml") : undefined;
+  const tasksSrcExplicit = manualArtifacts.tasks ? resolveTasksArg(manualArtifacts.tasks) : undefined;
   const tasksSrcInferred = !tasksSrcExplicit && backlogSrcResolved ? tryInferTasksFromBacklog(backlogSrcResolved) : undefined;
   if (tasksSrcExplicit) {
     const tasksDst = join(PLAN_DIR, "tasks.yml");
@@ -609,6 +645,13 @@ async function main() {
           lastMessageFile: join("dev-fe", RUN_ID, `iter-${i}`, `dev-fe-${i}.log`),
           jsonLogFile: join("dev-fe", RUN_ID, `iter-${i}`, `dev-fe-${i}.jsonl`),
           stageLabel: `Dev-FE#${i}`,
+          stallTimeoutMs: DEFAULT_DEV_STALL_MS,
+          env: {
+            // Block interactive tools like `playwright show-report/show-trace` by putting a guard earlier in PATH
+            PATH: `${resolve("scripts/wrappers/bin")}:${process.env.PATH || ""}`,
+            // Hint for tools/scripts that interactive commands are disallowed in this orchestrated run
+            NO_INTERACTIVE_CLI: "1",
+          },
         })
       );
     }
@@ -620,6 +663,11 @@ async function main() {
           lastMessageFile: join("dev-be", RUN_ID, `iter-${i}`, `dev-be-${i}.log`),
           jsonLogFile: join("dev-be", RUN_ID, `iter-${i}`, `dev-be-${i}.jsonl`),
           stageLabel: `Dev-BE#${i}`,
+          stallTimeoutMs: DEFAULT_DEV_STALL_MS,
+          env: {
+            PATH: `${resolve("scripts/wrappers/bin")}:${process.env.PATH || ""}`,
+            NO_INTERACTIVE_CLI: "1",
+          },
         })
       );
     }
@@ -792,6 +840,11 @@ async function main() {
               lastMessageFile: join("dev-fe", RUN_ID, `iter-${i}-retry`, `dev-fe-${i}-retry.log`),
               jsonLogFile: join("dev-fe", RUN_ID, `iter-${i}-retry`, `dev-fe-${i}-retry.jsonl`),
               stageLabel: `Dev-FE#${i}-retry`,
+              stallTimeoutMs: DEFAULT_DEV_STALL_MS,
+              env: {
+                PATH: `${resolve("scripts/wrappers/bin")}:${process.env.PATH || ""}`,
+                NO_INTERACTIVE_CLI: "1",
+              },
             })
           );
         }
@@ -803,6 +856,11 @@ async function main() {
               lastMessageFile: join("dev-be", RUN_ID, `iter-${i}-retry`, `dev-be-${i}-retry.log`),
               jsonLogFile: join("dev-be", RUN_ID, `iter-${i}-retry`, `dev-be-${i}-retry.jsonl`),
               stageLabel: `Dev-BE#${i}-retry`,
+              stallTimeoutMs: DEFAULT_DEV_STALL_MS,
+              env: {
+                PATH: `${resolve("scripts/wrappers/bin")}:${process.env.PATH || ""}`,
+                NO_INTERACTIVE_CLI: "1",
+              },
             })
           );
         }

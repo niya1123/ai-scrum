@@ -1,0 +1,50 @@
+@base = http://localhost:3000
+
+### Create game (AC: QGM-001)
+POST {{base}}/api/quantum-gomoku/games
+Content-Type: application/json
+Accept: application/json
+
+{}
+
+### Get game (AC: QGM-003)
+GET {{base}}/api/quantum-gomoku/games/{{gameId}}
+Accept: application/json
+
+### Get game — invalid id (QA-002)
+GET {{base}}/api/quantum-gomoku/games/invalid-id
+Accept: application/json
+
+### Get game — valid UUID but not found
+# Replace with a UUID v4 that is not present in store
+GET {{base}}/api/quantum-gomoku/games/00000000-0000-4000-8000-000000000000
+Accept: application/json
+
+### Make move (AC: QGM-006..QGM-012)
+POST {{base}}/api/quantum-gomoku/games/{{gameId}}/moves
+Content-Type: application/json
+Accept: application/json
+
+{
+  "playerId": "BLACK",
+  "position": { "row": 0, "col": 0 }
+}
+
+### Observe (AC: QGM-013..QGM-023)
+POST {{base}}/api/quantum-gomoku/games/{{gameId}}/observations
+Content-Type: application/json
+Accept: application/json
+# Optional test-only seed header if supported
+X-Test-Random-Seed: 42
+
+{
+  "playerId": "BLACK"
+}
+
+### Reset (AC: QGM-028)
+POST {{base}}/api/quantum-gomoku/games/{{gameId}}/reset
+Accept: application/json
+
+### Delete (AC: QGM-029)
+DELETE {{base}}/api/quantum-gomoku/games/{{gameId}}
+Accept: application/json

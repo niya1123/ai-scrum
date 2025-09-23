@@ -18,3 +18,12 @@
 - `requests.http` と `docs/domains/tasks/samples/api/*.json` を単体の契約サンプルとして継続運用（ドリフト検知）。
 - 受け口での軽量入力検証（型・空白・UUIDなど）はヘルパ化し、全エンドポイントに適用。
 - APIレスポンスの `accept: application/json` とエラーコードの一貫性を自動Lint。
+
+## アクション（Next）
+- BE-001/BE-002 を優先し、UUID/入力検証を公開（QA-002のGreen化）。
+- Docs: ドメイン `tasks` のAPIサンプルを増補（list/delete/requests.http 追加）。
+- QA: 失敗最小再現（無効ID/型不正/空白）を first-class 化して早期検知。
+
+---
+- 参照: out/planner/2025-09-23_local_iter-1/tasks.yml（critical_path, 失敗T2メモ）
+- ドメイン: tasks（docs/domains/tasks/*）

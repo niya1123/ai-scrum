@@ -1,76 +1,65 @@
-import { defineConfig, devices } from '@playwright/test'
-import { fileURLToPath } from 'node:url'
-import path from 'node:path'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const ROOT_DIR = path.join(__dirname, '..')
+import type { PlaywrightTestConfig } from '@playwright/test'
+import { mkdirSync } from 'node:fs'
+import { dirname, resolve, isAbsolute } from 'node:path'
 
 const PORT = Number(process.env.PORT || 3000)
 const BASE_URL = process.env.BASE_URL || `http://localhost:${PORT}`
-const HTML_REPORT = process.env.PLAYWRIGHT_HTML_REPORT || 'playwright-report'
-const JSON_REPORT = process.env.PLAYWRIGHT_JSON_REPORT
+const HTML_REPORT_DIR = process.env.PLAYWRIGHT_HTML_REPORT || 'playwright-report'
+const JSON_REPORT_FILE = process.env.PLAYWRIGHT_JSON_REPORT
 const OUTPUT_DIR = process.env.PLAYWRIGHT_OUTPUT_DIR || 'test-results'
 const TRACE = (process.env.PLAYWRIGHT_TRACE as 'on' | 'off' | 'retain-on-failure' | undefined) || 'retain-on-failure'
-const WORKERS = Number(process.env.PLAYWRIGHT_WORKERS || 1)
-const HEADLESS = process.env.PLAYWRIGHT_HEADLESS !== '0'
-const WEB_SERVER_MODE = process.env.PLAYWRIGHT_WEB_SERVER_MODE || 'dev'
-const WEB_SERVER_COMMAND = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND
-const WEB_SERVER_TIMEOUT = Number(process.env.PLAYWRIGHT_WEB_SERVER_TIMEOUT || 40_000)
-const SHOULD_START_WEB_SERVER = process.env.PLAYWRIGHT_SKIP_WEB_SERVER !== '1'
+const SCREENSHOT = (process.env.PLAYWRIGHT_SCREENSHOT as 'off' | 'on' | 'only-on-failure' | undefined) || 'only-on-failure'
+const WORKERS = Number(process.env.PW_WORKERS || process.env.PLAYWRIGHT_WORKERS || 1)
 
-const resolveWithinRoot = (target: string) => (path.isAbsolute(target) ? target : path.join(ROOT_DIR, target))
+const mode = process.env.PLAYWRIGHT_WEB_SERVER_MODE || 'prod' // 'dev' | 'prod'
+const skipWebServer = process.env.PLAYWRIGHT_SKIP_WEB_SERVER === '1'
 
-const reporters: any[] = [
-  ['html', { outputFolder: resolveWithinRoot(HTML_REPORT), open: 'never' }],
-]
+const command =
+  mode === 'dev'
+    ? 'npm run dev'
+    : 'npm run start'
 
-if (JSON_REPORT) {
-  reporters.push(['json', { outputFile: resolveWithinRoot(JSON_REPORT) }])
+// Reporters: always HTML (never auto-open); conditionally JSON when PLAYWRIGHT_JSON_REPORT is set
+const reporters: any[] = [['html', { outputFolder: HTML_REPORT_DIR, open: 'never' as const }]]
+if (JSON_REPORT_FILE) {
+  const resolved = isAbsolute(JSON_REPORT_FILE)
+    ? JSON_REPORT_FILE
+    : resolve(process.cwd(), JSON_REPORT_FILE)
+  try {
+    mkdirSync(dirname(resolved), { recursive: true })
+  } catch {}
+  reporters.push(['json', { outputFile: resolved }])
 }
 
-const webServer = SHOULD_START_WEB_SERVER
-  ? {
-      command:
-        WEB_SERVER_COMMAND ||
-        (WEB_SERVER_MODE === 'prod' ? 'npm run start' : 'npm run dev'),
-      cwd: ROOT_DIR,
-      env: {
-        ...process.env,
-        PORT: String(PORT),
-        BASE_URL,
-      },
-      port: PORT,
-      reuseExistingServer: true,
-      timeout: WEB_SERVER_TIMEOUT,
-    }
-  : undefined
+// Optional debug of resolved reporter config
+if (process.env.PW_CONF_DEBUG === '1') {
+  console.log('[playwright.config] BASE_URL=%s', BASE_URL)
+  console.log('[playwright.config] HTML_REPORT_DIR=%s', HTML_REPORT_DIR)
+  console.log('[playwright.config] JSON_REPORT_FILE=%s', JSON_REPORT_FILE || '(unset)')
+  console.log('[playwright.config] reporters=%o', reporters)
+}
 
-export default defineConfig({
-  // Allow both legacy root tests and per-domain tests under trip/* and todo/*
-  testDir: ROOT_DIR,
-  testMatch: [
-    'tests/e2e/**/*.spec.ts',
-    'trip/tests/e2e/**/*.spec.ts',
-    'todo/tests/e2e/**/*.spec.ts',
-  ],
-  timeout: 40_000,
-  expect: { timeout: 5_000 },
-  reporter: reporters as any,
-  outputDir: resolveWithinRoot(OUTPUT_DIR),
+const config: PlaywrightTestConfig = {
+  // Resolve relative to this config file (config/ → project root tests)
+  testDir: '../tests/e2e',
+  timeout: 30_000,
   workers: WORKERS,
-  webServer,
+  outputDir: OUTPUT_DIR,
+  reporter: reporters,
   use: {
     baseURL: BASE_URL,
     trace: TRACE,
-    headless: HEADLESS,
-    screenshot: 'only-on-failure',
-    video: 'off',
+    screenshot: SCREENSHOT,
   },
-  projects: [
-    {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
-    },
-  ],
-})
+  webServer: skipWebServer
+    ? undefined
+    : {
+        command,
+        env: { PORT: String(PORT) },
+        reuseExistingServer: true,
+        timeout: 40_000,
+        url: BASE_URL,
+      },
+}
+
+export default config

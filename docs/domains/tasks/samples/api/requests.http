@@ -1,0 +1,37 @@
+@base = http://localhost:3000
+
+### List tasks
+GET {{base}}/api/tasks
+accept: application/json
+
+### Create task (ok)
+POST {{base}}/api/tasks
+content-type: application/json
+
+{ "title": "Buy milk" }
+
+### Create task (error: empty title)
+POST {{base}}/api/tasks
+content-type: application/json
+
+{ "title": "  " }
+
+### Update done (ok)
+@taskId = 8d3d4cf0-1234-4c5b-b17e-1f7d23456789
+PATCH {{base}}/api/tasks/{{taskId}}
+content-type: application/json
+
+{ "done": true }
+
+### Update done (error: invalid type)
+PATCH {{base}}/api/tasks/{{taskId}}
+content-type: application/json
+
+{ "done": "yes" }
+
+### Delete (ok)
+DELETE {{base}}/api/tasks/{{taskId}}
+
+### Delete (error: not found)
+DELETE {{base}}/api/tasks/does-not-exist
+

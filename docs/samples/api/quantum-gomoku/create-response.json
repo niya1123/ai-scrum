@@ -1,0 +1,15 @@
+{
+  "gameId": "<uuid>",
+  "gameState": {
+    "id": "<uuid>",
+    "status": "playing",
+    "currentPlayer": "BLACK",
+    "winner": null,
+    "board": [[null]],
+    "blackObservationsRemaining": 5,
+    "whiteObservationsRemaining": 5,
+    "turnCount": 0,
+    "createdAt": "2025-01-01T00:00:00.000Z",
+    "lastMover": null
+  }
+}

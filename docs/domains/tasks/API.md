@@ -3,7 +3,7 @@
 ## 概要
 - ベースURL: `http://localhost:3000`
 - 認証: なし（ローカル開発想定）
-- コンテンツタイプ: 送信時は `application/json`
+- ヘッダー: `accept: application/json`（推奨）、送信時は `content-type: application/json`
 - タスクオブジェクトの共通スキーマ:
   | フィールド | 型 | 説明 |
   | --- | --- | --- |
@@ -20,6 +20,8 @@
 - レスポンス: `200 OK`
 - ボディ: タスクオブジェクトの配列（最新が先頭）。
 - エラー: なし。
+
+サンプル: `docs/domains/tasks/samples/api/tasks.list.json`
 
 ```bash
 curl -s ${BASE_URL:-http://localhost:3000}/api/tasks | jq .
@@ -86,6 +88,8 @@ curl -s -X PATCH \
 ```bash
 curl -s -X DELETE ${BASE_URL:-http://localhost:3000}/api/tasks/<id> | jq .
 ```
+
+サンプル: `docs/domains/tasks/samples/api/task.delete.json`
 
 ## エラーレスポンス共通形式
 ```json

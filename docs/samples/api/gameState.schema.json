@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://example.com/schemas/gameState.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id","status","currentPlayer","winner","board",
+    "blackObservationsRemaining","whiteObservationsRemaining",
+    "turnCount","createdAt","lastMover"
+  ],
+  "properties": {
+    "id": { "type": "string" },
+    "status": { "type": "string", "enum": ["playing","finished","draw"] },
+    "currentPlayer": { "type": "string", "enum": ["BLACK","WHITE"] },
+    "winner": { "type": ["string","null"], "enum": ["BLACK","WHITE",null] },
+    "board": {
+      "type": "array",
+      "minItems": 15,
+      "maxItems": 15,
+      "items": {
+        "type": "array",
+        "minItems": 15,
+        "maxItems": 15,
+        "items": {
+          "anyOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "required": ["placedBy","turnPlaced","probabilityType"],
+              "properties": {
+                "placedBy": { "type": "string", "enum": ["BLACK","WHITE"] },
+                "turnPlaced": { "type": "integer", "minimum": 1 },
+                "probabilityType": { "type": "string", "enum": ["P90","P70","P30","P10"] },
+                "observedColor": { "type": ["string","null"], "enum": ["BLACK","WHITE",null] }
+              },
+              "additionalProperties": true
+            }
+          ]
+        }
+      }
+    },
+    "blackObservationsRemaining": { "type": "integer", "minimum": 0 },
+    "whiteObservationsRemaining": { "type": "integer", "minimum": 0 },
+    "turnCount": { "type": "integer", "minimum": 0 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "lastMover": { "type": ["string","null"], "enum": ["BLACK","WHITE",null] }
+  }
+}
+

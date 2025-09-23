@@ -10,6 +10,11 @@ Constraints:
   （`<primary-domain>` は `DOMAIN_SPEC` の直下ディレクトリ名）。
 - 成果物の配置: 実装ログは `out/dev-fe/<RUN_ID>/iter-#/` に保存（Orchestratorが出力先を用意）。
 
+Anti-Stall / 実行ポリシー（厳守）:
+- 対話型コマンドの起動禁止: `playwright show-report` / `playwright show-trace` / `playwright codegen` / `playwright open` 等のローカルサーバー・ビューアは起動しない（パイプラインがハングします）。
+- デバッグは静的成果物のみ参照: `out/qa/<RUN_ID>/<ITER>/report/` 配下の `results.json`/`*.zip`/スクショを `cat`/`sed`/`rg` で確認すること。
+- 必要なら JSON レポーターを利用し要約を出力。GUI ビューアは使わない。
+
 Output:
 - 変更差分（ファイル一覧/意図）
 - 起動/確認手順（localhost URL）

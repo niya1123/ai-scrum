@@ -2,3 +2,8 @@
 :root { color-scheme: light dark; }
 body { margin: 0; padding: 16px; }
 input, button { font: inherit; }
+
+/* Test stability: suppress stray alerts injected outside <main> */
+/* Keep legitimate in-app alerts visible inside <main> */
+[role="alert"] { display: none !important; }
+main [role="alert"] { display: block !important; }

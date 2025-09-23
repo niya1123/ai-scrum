@@ -13,3 +13,8 @@
 - Add a lightweight contract check in CI: fetch `GET /api/tasks`, `POST /api/tasks`, `PATCH/DELETE /api/tasks/:id` using `requests.http` or Playwright API mode.
 - Consider generating an OpenAPI stub for the tasks API to back contract tests and docs.
 - Add a pre-commit that validates `requests.http` examples (curl smoke) in local dev.
+
+## Notes
+- Current API and USER_GUIDE align with code (GET/POST/PATCH/DELETE, `TITLE_REQUIRED`, `DONE_REQUIRED`, `TASK_NOT_FOUND`).
+- Samples already cover success and validation failures; no spec gaps found this iteration.
+

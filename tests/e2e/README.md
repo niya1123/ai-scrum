@@ -1,13 +1,16 @@
-E2E Spec Conventions (Tool-Agnostic)
+# E2E Test Skeleton (Tool-Agnostic)
 
-- Base URL: `http://localhost:3000` (override via `BASE_URL`).
-- Content type: All requests use `application/json` and expect JSON responses (AC: QGM-032).
-- Randomness: Observations involve randomness (AC: QGM-015). For deterministic tests, a test-only hook such as `X-Test-Random-Seed` may be used if Architect/Dev-BE expose it (see tasks: BE-TEST-UTIL-001).
-- IDs: Persist `gameId` between steps to assert state consistency (AC: QGM-005).
-- Format: Each test includes Title with AC id, Preconditions, Steps, Expected.
-
-Execution
-
-- These are tool-agnostic specs. QA should translate them into the chosen runner (e.g., Playwright API testing, Jest+Supertest).
-- Sample payloads and cURL/HTTP files live in `docs/samples/api/`.
-
+- Runner: To be confirmed by Architect (e.g., Playwright/Cypress/WebdriverIO).
+- This directory contains human-readable test skeletons that map 1:1 to AC IDs.
+- Environment:
+  - `BASE_URL`: Base URL for API (e.g., http://localhost:3000/api)
+  - `APP_URL`: Base URL for UI (e.g., http://localhost:3000)
+- Selectors (per AC QGM-S05):
+  - Board: `[data-testid="board"][role="grid"]`
+  - Cell: `[data-testid="cell-<row>-<col>"][role="gridcell"]`
+  - New Game Button: `[data-testid="new-game"]`
+  - Stone: within a cell, `[data-testid="stone"]` (if present)
+  - Probability label: `[data-testid="stone"][data-prob]` with visible text like `90%` (AC S08, Could)
+- Notes:
+  - Tests below specify Preconditions, Steps, and Expected; translate into the chosen runner later.
+  - Minimal happy path must be GREEN first.

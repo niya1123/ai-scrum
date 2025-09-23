@@ -127,3 +127,139 @@ curl -s -X POST \
 - エンドポイント: `POST /api/quantum-gomoku/games/:id/observations { playerId }`
 - 動作: 盤上の全石について確率に従い `observedColor` を乱択。縦横斜めいずれかで3目以上の連続ができていれば、観測した側を勝者にして `status='finished'`/`winner` を設定。成立しなければ全石を未観測状態（`observedColor=null`）に戻して継続。
 - 観測回数: 各プレイヤー最大5回。使い切ると以降不可。
+
+---
+
+## Full Play Loop（観測・勝敗・リセット・削除まで）
+
+### エラーモデル（統一）
+- 形式: `{ code: string, message: string, details?: object }`
+- 代表コード:
+  - `INVALID_ID`（400）: UUID 形式不正（v1〜v5 いずれか）。
+  - `NOT_FOUND`（404）: ゲーム未存在。
+  - `INVALID_POSITION`（400）: `position` が範囲外。
+  - `CELL_OCCUPIED`（400）: セルに既に石が存在。
+  - `OUT_OF_TURN`（409）: 手番不一致。
+  - `OBS_NOT_ALLOWED`（409）: 直前に自分が置いた手ではない／観測前提を満たさない。
+  - `OBS_LIMIT_EXCEEDED`（409）: 観測回数を使い切っている。
+  - `GAME_OVER`（409）: `status !== 'playing'`（終了/引き分け）。
+
+### 確率 → 色の決定規則（観測時）
+- `P90`: 黒=0.9, 白=0.1
+- `P70`: 黒=0.7, 白=0.3
+- `P30`: 黒=0.3, 白=0.7
+- `P10`: 黒=0.1, 白=0.9
+- 疑似乱数: 実装は `Math.random()` 等で良い。E2E の再現性を高めたい場合はオプションで `seed`（数値）を `POST /observations` のボディに許容してもよい（未指定時は非決定）。
+
+### 勝利判定（観測時のみ）
+- 連続3以上（縦・横・斜め）でその色の勝利。
+- 両者同時成立時は「観測したプレイヤー」の勝利。
+- 不成立なら盤は「未観測」状態に戻す（`observedColor=null` を全セルに適用）。
+
+### API 仕様（詳細）
+
+1) POST `/api/quantum-gomoku/games`
+- 201 `{ gameId, gameState }`
+- 初期値: `status='playing'`, `currentPlayer='BLACK'`, `winner=null`, `turnCount=0`, `blackObservationsRemaining=5`, `whiteObservationsRemaining=5`, `board=15x15 null`, `lastMover=null`。
+
+2) GET `/api/quantum-gomoku/games/:id`
+- 200 `{ gameState }` ／ 404 `NOT_FOUND` ／ 400 `INVALID_ID`
+
+3) POST `/api/quantum-gomoku/games/:id/moves`
+- リク: `{ playerId: 'BLACK'|'WHITE', position: { row:number, col:number } }`
+- バリデーション: 範囲、占有、手番、ID形式、存在。
+- 200 `{ gameState }`（配置反映、`turnCount+=1`, `currentPlayer` 交代, `lastMover=playerId`）
+- 400/404/409: 上記エラーモデル参照。
+
+4) POST `/api/quantum-gomoku/games/:id/observations`
+- リク: `{ playerId: 'BLACK'|'WHITE', seed?: number }`
+- 前提: `status='playing'` かつ `lastMover===playerId` かつ `observationsRemaining(playerId)>0`。
+- 処理: 盤上すべての石に対し確率に基づき `observedColor` を一時決定→勝利判定。
+  - 勝利あり: `status='finished'`, `winner=playerId`（同時成立時も同じ）。
+  - 勝利なし: 全セル `observedColor=null` に戻し、ゲーム続行。
+- 消費: 実行者の残り観測回数を 1 減少。
+- 200 `{ observationResult, gameState }`
+  - `observationResult`: `{ id, observedBy, turnExecuted, resultBoard, isWinning, winner, winningLine }`
+- 409: `OBS_NOT_ALLOWED` / `OBS_LIMIT_EXCEEDED` / `GAME_OVER`
+- 404/400: `NOT_FOUND` / `INVALID_ID`
+
+5) POST `/api/quantum-gomoku/games/:id/reset`
+- 動作: そのゲームの盤・状態を初期化し、同じ `id`/`createdAt` を維持。
+- 200 `{ gameState }`
+
+6) DELETE `/api/quantum-gomoku/games/:id`
+- 動作: メモリ上のゲームを削除。
+- 200 `{ success: true }` ／ 404 `NOT_FOUND`
+
+### ステートマシン（簡易）
+```
+playing --(observation with win)--> finished
+playing --(board full AND obs=0 for both)--> draw
+finished/draw --(reset)--> playing
+```
+補足: `moves` は `playing` のみ許可。`observations` も同様。`delete` はどの状態でも可。
+
+### UI 実装要件（最小）
+- セレクタ（テスト安定化）
+  - 盤: `[data-testid="board"]` / `role=grid`
+  - セル: `[data-testid="cell-<row>-<col>"]` / `role=gridcell`
+  - 新規作成: `[data-testid="new-game"]`
+  - 観測: `[data-testid="observe"]`（ラベル例: `Observe (BLACK)`/`Observe (WHITE)`）
+  - リセット: `[data-testid="reset-game"]`
+  - 削除: `[data-testid="delete-game"]`
+  - 既存ID入力: `#existing_id` + 送信 `[data-testid="load-game"]`（UUID v4 検証）
+- フロー
+  1. 起動時: `?gameId=` または localStorage の ID を読み、無ければ新規作成。
+  2. セルクリック: `POST /moves`（`playerId` は `currentPlayer`）。200 なら返却 `gameState` で再描画。
+  3. 観測ボタン: 直前手の実行者のみ有効。クリックで `POST /observations` → 返却に従い再描画。
+  4. リセット/削除: 該当 API 実行。削除後は新規作成へ。
+- 表示
+  - ステータスバー: `id`, `turnCount`, `currentPlayer`, `black/white observationsRemaining`, `status`, `winner?`
+  - 未観測石: 黒=濃グレー/白=淡グレー、観測済みは黒/白の確定色。
+  - 確率ラベル（新規）: 未観測石上に確率を数値で表示（`90%/70%/30%/10%`）。
+    - E2E向け属性: 石要素に `data-testid="stone"` と `data-prob="90|70|30|10"` を付与し、テキストノードに同じ数値を描画。
+    - `aria-label` には `placedBy` と確率種（例: `BLACK P90`）を含める。
+    - 観測により `observedColor` が確定した石は確率ラベルを非表示にし、色のみを表示。
+  - 観測回数 表示（新規）: 双方の「使用済み/残り」を可視化。
+    - `data-testid="obs-remaining-black"`, `obs-remaining-white`
+    - `data-testid="obs-used-black"`, `obs-used-white`（`used = 5 - remaining`）
+  - 次に置く確率種: `currentPlayer` に応じたローテーションを小さく表示（任意だが推奨）。
+  - 観測ボタンの有効化ルール: `status==='playing'` かつ `lastMover` がボタンラベルに表示されているプレイヤーで、その `observationsRemaining>0` のときのみ `enabled`。それ以外は `disabled`（`aria-disabled` でも可）。
+
+参考 UI 構造（例）
+```
+<button data-testid="observe" disabled>Observe (BLACK)</button>
+<div role="status">
+  <span data-testid="obs-remaining-black">BLACK obs remaining: 5</span>
+  <span data-testid="obs-used-black">BLACK obs used: 0</span>
+  <span data-testid="obs-remaining-white">WHITE obs remaining: 5</span>
+  <span data-testid="obs-used-white">WHITE obs used: 0</span>
+</div>
+<!-- 石（未観測） -->
+<span data-testid="stone" data-prob="90" aria-label="BLACK P90">90%</span>
+```
+
+### Acceptance Criteria（実装完了の定義）
+- QGM-001: 新規作成が 201 で返る（初期値は上記）。
+- QGM-002: GET 取得が 200、未存在は 404 `NOT_FOUND`。
+- QGM-010: 空セルクリックで未観測石が描画される（UI/POST /moves）。
+- QGM-011: 配置後に `currentPlayer` が交代し `turnCount` が +1。
+- QGM-012: 確率種ローテーションが手番ごとに交互（黒: P90→P70…／白: P10→P30…）。
+- QGM-013: 占有セルは `CELL_OCCUPIED`、範囲外は `INVALID_POSITION`、手番違反は `OUT_OF_TURN`。
+- QGM-016: 未観測石には確率ラベル（90/70/30/10%）が表示され、`data-prob` とテキストが一致する。観測確定後は確率ラベルが非表示になる。
+- QGM-020: 観測実行で `observationsRemaining` が実行者のみ 1 減少。
+- QGM-021: 観測は直前手の実行者のみ可能（それ以外は `OBS_NOT_ALLOWED`）。
+- QGM-022: 観測で勝利が成立したら `status='finished'` と `winner` を設定（同時成立時は観測者の勝利）。
+- QGM-023: 勝利不成立なら全 `observedColor` が `null` に戻る。
+- QGM-024: 観測回数を使い切ると以降の観測は `OBS_LIMIT_EXCEEDED`。
+- QGM-025: 観測ボタン `[data-testid="observe"]` が常に表示され、有効/無効がルールに従って切り替わる。ラベルは `Observe (BLACK|WHITE)` で現在の対象（`lastMover`）を示す。
+- QGM-026: UI に双方の観測カウンタが表示される（`obs-used-*` と `obs-remaining-*`）。配置/観測操作に応じて値が正しく更新される。
+- QGM-030: リセットで同一 `id`/`createdAt` を保持したまま初期状態に戻る。
+- QGM-031: 削除で `{ success:true }`。以後 GET は 404。
+- QGM-040: 両者の観測回数が 0 で、かつ盤が埋まったら `status='draw'`。
+
+### 実装メモ（非規範だが参考）
+- `lastMover` を `observations` のガードに利用（`lastMover===playerId` のみ可）。
+- 勝利判定は 8 方向（実装は4方向で対称処理）×連続長カウントで 3 以上。
+- `reset` は `id/createdAt` を残し、それ以外は初期化。
+- メモリ実装で十分（再起動でクリア）。

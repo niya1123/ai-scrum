@@ -1,18 +1,2 @@
-{
-  "request": {
-    "method": "DELETE",
-    "path": "/api/tasks/8d3d4cf0-1234-4c5b-b17e-1f7d23456789"
-  },
-  "response": {
-    "status": 200,
-    "headers": {
-      "content-type": "application/json"
-    },
-    "body": { "ok": true }
-  },
-  "error_not_found": {
-    "status": 404,
-    "body": { "error": "TASK_NOT_FOUND" }
-  }
-}
+{ "ok": true }
 

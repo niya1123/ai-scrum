@@ -57,6 +57,11 @@ export function BoardView({ board, onCellClick, disabled }: BoardProps) {
                 data-testid="stone"
                 data-stone-player={cell.placedBy}
                 data-stone-observed={cell.observedColor ? "true" : "false"}
+                data-prob={
+                  cell.probabilityType === 'P90' ? '90' :
+                  cell.probabilityType === 'P70' ? '70' :
+                  cell.probabilityType === 'P30' ? '30' : '10'
+                }
                 className={
                   `marker ` +
                   (
@@ -78,8 +83,23 @@ export function BoardView({ board, onCellClick, disabled }: BoardProps) {
                     : "#ddd",
                   boxShadow: "inset 0 0 2px rgba(0,0,0,0.6)",
                   border: "1px solid rgba(0,0,0,0.2)",
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#111',
+                  fontSize: 9,
+                  lineHeight: '1',
+                  fontWeight: 600,
                 }}
-              />
+              >
+                {!cell.observedColor ? (
+                  <span aria-hidden="true">
+                    {cell.probabilityType === 'P90' ? '90' :
+                    cell.probabilityType === 'P70' ? '70' :
+                    cell.probabilityType === 'P30' ? '30' : '10'}%
+                  </span>
+                ) : null}
+              </span>
             ) : null}
           </button>
         ))

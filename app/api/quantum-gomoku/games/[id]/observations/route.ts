@@ -15,19 +15,19 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     body = {}
   }
   const playerId = body?.playerId
-  const position = body?.position
+  const seed = typeof body?.seed === 'number' ? body.seed : undefined
   const svc = getGameService()
-  const result = svc.placeMove(id, { playerId, position })
-  if ('error' in result) return NextResponse.json(result.error, { status: errorStatus(result.error.code) })
+  const result = svc.observe(id, { playerId, seed })
+  if (result.error) return NextResponse.json(result.error, { status: errorStatus(result.error.code) })
   return NextResponse.json(result, { status: 200 })
 }
 
 function errorStatus(code: string): number {
   switch (code) {
     case 'NOT_FOUND': return 404
-    case 'OUT_OF_TURN': return 409
-    case 'INVALID_POSITION': return 400
-    case 'CELL_OCCUPIED': return 400
+    case 'GAME_OVER': return 409
+    case 'OBS_NOT_ALLOWED': return 409
+    case 'OBS_LIMIT_EXCEEDED': return 409
     default: return 400
   }
 }

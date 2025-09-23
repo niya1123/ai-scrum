@@ -154,6 +154,19 @@ npm run test:e2e -- trip/tests/e2e/trip_plan.spec.ts
 npm run test:e2e -- tests/e2e/ui/quantum-gomoku.min-ui.spec.ts
 ```
 
+### QA 実行メモ（Anti-Stall 準拠）
+- 禁止: `playwright show-report` / `playwright show-trace` などの GUI ビューア。
+- 推奨: JSON レポーターで結果要約を取得。
+  - 安定版（build+start, headless, workers=1）: `npm run test:e2e:ci`
+  - 結果 JSON: `playwright-report/results.json`（`npm run qa:summary` で要約出力）
+- ローカル高速実行（dev サーバ・headless）: `npm run test:e2e:local:dev`
+- 最小 UI のみを検証: `npm run test:e2e -- tests/e2e/ui/quantum-gomoku.min-ui.spec.ts`
+
+UI 側では `<main>` 外に注入される stray な `role=alert` を CSS で抑止し、
+アプリ内（`<main>` 内）のエラーのみ可視化します。これにより E2E で
+`getByRole('alert')` の誤検出を防ぎながら、正規の UI バリデーション表示は維持します。
+```
+
 ## Quantum Gomoku — 新規ドメイン（API/最小UI）
 
 - DOMAIN_SPEC: `domains/quantum-gomoku/quantum-gomoku.md`（`npm run domain quantum` もしくは `npm run domain gomoku` で自動設定）

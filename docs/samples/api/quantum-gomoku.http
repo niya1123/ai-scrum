@@ -1,0 +1,23 @@
+### Quantum Gomoku — API Samples
+
+@base=http://localhost:3000
+@json=application/json
+
+### Create a new game
+POST {{base}}/api/quantum-gomoku/games
+Accept: {{json}}
+
+### Retrieve an existing game (replace :id)
+GET {{base}}/api/quantum-gomoku/games/00000000-0000-4000-8000-000000000000
+Accept: {{json}}
+
+### Place a move (center)
+POST {{base}}/api/quantum-gomoku/games/:id/moves
+Content-Type: {{json}}
+Accept: {{json}}
+
+{
+  "playerId": "BLACK",
+  "position": { "row": 7, "col": 7 }
+}
+

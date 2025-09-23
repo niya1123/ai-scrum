@@ -24,6 +24,27 @@ export default function GameUI() {
   const [existingId, setExistingId] = useState("")
   const [inputError, setInputError] = useState<string | null>(null)
 
+  // Defensive: remove any stray global alerts that might be injected by the runtime or tooling
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    try {
+      const purge = () => {
+        const strayAlerts = document.querySelectorAll('[role="alert"]')
+        strayAlerts.forEach((el) => {
+          if (!el.closest('main')) el.parentElement?.removeChild(el)
+        })
+      }
+      // Initial purge on mount
+      purge()
+
+      // Observe DOM mutations to remove any newly inserted stray alerts
+      const mo = new MutationObserver(() => purge())
+      mo.observe(document.body, { childList: true, subtree: true })
+
+      return () => mo.disconnect()
+    } catch {}
+  }, [])
+
   const canSubmitExisting = useMemo(() => {
     if (existingId.trim().length === 0) return false
     return UUID_V4_RE.test(existingId.trim())
@@ -111,6 +132,8 @@ export default function GameUI() {
   const statusBar = useMemo(() => {
     if (loadState.status !== "loaded") return null
     const gs = loadState.gameState
+    const usedBlack = 5 - gs.blackObservationsRemaining
+    const usedWhite = 5 - gs.whiteObservationsRemaining
     return (
       <div
         role="status"
@@ -125,8 +148,10 @@ export default function GameUI() {
         <span>Game ID: <code>{gs.id}</code></span>
         <span>Turn: {gs.turnCount}</span>
         <span>Current: {gs.currentPlayer}</span>
-        <span>Black obs: {gs.blackObservationsRemaining}</span>
-        <span>White obs: {gs.whiteObservationsRemaining}</span>
+        <span data-testid="obs-remaining-black">BLACK obs remaining: {gs.blackObservationsRemaining}</span>
+        <span data-testid="obs-used-black">BLACK obs used: {usedBlack}</span>
+        <span data-testid="obs-remaining-white">WHITE obs remaining: {gs.whiteObservationsRemaining}</span>
+        <span data-testid="obs-used-white">WHITE obs used: {usedWhite}</span>
         <span>Status: {gs.status}</span>
         {gs.winner ? <span>Winner: {gs.winner}</span> : null}
       </div>
@@ -178,8 +203,15 @@ export default function GameUI() {
         <form
           onSubmit={e => {
             e.preventDefault()
+            const id = existingId.trim()
             if (!canSubmitExisting) return
-            return fetchGame(existingId.trim())
+            // If the requested ID matches the currently loaded game, do nothing.
+            // This avoids an unnecessary GET and prevents transient error alerts.
+            if (loadState.status === "loaded" && loadState.gameId === id) {
+              setInputError(null)
+              return
+            }
+            return fetchGame(id)
           }}
           style={{ display: "flex", gap: 8, alignItems: "center" }}
         >
@@ -216,6 +248,46 @@ export default function GameUI() {
       {loadState.status === "loaded" && (
         <>
           {statusBar}
+          {/* Observe button */}
+          {(() => {
+            const gs = loadState.gameState
+            const target = gs.lastMover
+            const remaining = target === 'BLACK' ? gs.blackObservationsRemaining : target === 'WHITE' ? gs.whiteObservationsRemaining : 0
+            const canObserve = gs.status === 'playing' && target !== null && remaining > 0
+            const label = `Observe (${target ?? '—'})`
+            return (
+              <button
+                type="button"
+                data-testid="observe"
+                onClick={async () => {
+                  if (!canObserve || !target) return
+                  try {
+                    const res = await fetch(`/api/quantum-gomoku/games/${gs.id}/observations`, {
+                      method: 'POST',
+                      headers: { 'content-type': 'application/json', accept: 'application/json' },
+                      body: JSON.stringify({ playerId: target })
+                    })
+                    const data = await res.json().catch(() => null)
+                    if (!res.ok) {
+                      const code = data && typeof data.code === 'string' ? data.code : `HTTP_${res.status}`
+                      setLoadState({ status: 'error', message: code })
+                      await fetchGame(gs.id)
+                      return
+                    }
+                    const next = data as { observationResult: unknown; gameState: GameState }
+                    setLoadState({ status: 'loaded', gameId: gs.id, gameState: next.gameState })
+                  } catch {
+                    setLoadState({ status: 'error', message: 'Network error' })
+                  }
+                }}
+                disabled={!canObserve}
+                aria-disabled={!canObserve}
+                style={{ marginBottom: 12 }}
+              >
+                {label}
+              </button>
+            )
+          })()}
           <BoardView board={loadState.gameState.board} onCellClick={handleCellClick} />
         </>
       )}

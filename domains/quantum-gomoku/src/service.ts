@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import type { GameRepository } from './ports/gameRepository'
 import type { GameState, PlayerId } from './types'
 import { createEmptyBoard, INITIAL_OBSERVATIONS, BOARD_SIZE } from './types'
-import { cellOccupied, invalidPosition, notFound, outOfTurn } from './errors'
+import { cellOccupied, gameOver, invalidPosition, notFound, obsLimitExceeded, obsNotAllowed, outOfTurn } from './errors'
 
 export class GameService {
   constructor(private readonly repo: GameRepository) {}
@@ -72,6 +72,68 @@ export class GameService {
     this.repo.save(game)
     return { gameState: game }
   }
+
+  observe(
+    id: string,
+    params: { playerId: PlayerId; seed?: number }
+  ): { observationResult?: any; gameState?: GameState; error?: ReturnType<typeof notFound> | ReturnType<typeof gameOver> | ReturnType<typeof obsNotAllowed> | ReturnType<typeof obsLimitExceeded> } {
+    const game = this.repo.get(id)
+    if (!game) return { error: notFound('Game not found', { id }) }
+    if (game.status !== 'playing') return { error: gameOver('Game is over') }
+
+    const { playerId, seed } = params
+    if (game.lastMover !== playerId) {
+      return { error: obsNotAllowed('Observation allowed only to last mover', { lastMover: game.lastMover, playerId }) }
+    }
+    const remKey = playerId === 'BLACK' ? 'blackObservationsRemaining' : 'whiteObservationsRemaining'
+    if (game[remKey] <= 0) return { error: obsLimitExceeded('No observations remaining', { playerId }) }
+
+    const rng = makeRng(seed)
+    const observedBoard = game.board.map(row => row.map(cell => {
+      if (!cell) return null
+      const pBlack = probToBlack(cell.probabilityType)
+      const r = rng()
+      const observedColor: PlayerId = r < pBlack ? 'BLACK' : 'WHITE'
+      return { ...cell, observedColor }
+    }))
+
+    const blackWin = hasLine(observedBoard, 'BLACK', 3)
+    const whiteWin = hasLine(observedBoard, 'WHITE', 3)
+    let winner: PlayerId | null = null
+    if (blackWin && whiteWin) winner = playerId
+    else if (blackWin) winner = 'BLACK'
+    else if (whiteWin) winner = 'WHITE'
+
+    game[remKey] = Math.max(0, game[remKey] - 1)
+
+    let winningLine: Array<{ row: number; col: number }> | undefined
+    if (winner) {
+      winningLine = anyWinningLine(observedBoard, winner, 3)
+      game.status = 'finished'
+      game.winner = winner
+      game.board = observedBoard
+    } else {
+      // Revert to unobserved
+      game.board = game.board.map(row => row.map(cell => (cell ? { ...cell, observedColor: null } : null)))
+    }
+
+    // Draw check after observation
+    if (!winner && game.blackObservationsRemaining === 0 && game.whiteObservationsRemaining === 0 && isBoardFull(game.board)) {
+      game.status = 'draw'
+    }
+
+    this.repo.save(game)
+    const observationResult = {
+      id: randomUUID(),
+      observedBy: playerId,
+      turnExecuted: game.turnCount,
+      resultBoard: observedBoard,
+      isWinning: Boolean(winner),
+      winner,
+      winningLine,
+    }
+    return { observationResult, gameState: game }
+  }
 }
 
 function countStonesBy(game: GameState, player: PlayerId): number {
@@ -90,4 +152,51 @@ function nextProbabilityFor(player: PlayerId, priorMovesByPlayer: number) {
     return priorMovesByPlayer % 2 === 0 ? 'P90' : 'P70'
   }
   return priorMovesByPlayer % 2 === 0 ? 'P10' : 'P30'
+}
+
+function probToBlack(p: 'P90'|'P70'|'P30'|'P10'): number {
+  switch (p) {
+    case 'P90': return 0.9
+    case 'P70': return 0.7
+    case 'P30': return 0.3
+    case 'P10': return 0.1
+  }
+}
+
+function anyWinningLine(board: GameState['board'], color: PlayerId, need = 3): Array<{row:number; col:number}> | undefined {
+  const dirs = [ [0,1], [1,0], [1,1], [1,-1] ] as const
+  for (let r = 0; r < BOARD_SIZE; r++) {
+    for (let c = 0; c < BOARD_SIZE; c++) {
+      for (const [dr, dc] of dirs) {
+        let coords: Array<{row:number; col:number}> = []
+        for (let k = 0; k < need; k++) {
+          const rr = r + dr*k, cc = c + dc*k
+          if (rr < 0 || cc < 0 || rr >= BOARD_SIZE || cc >= BOARD_SIZE) { coords = []; break }
+          const cell = board[rr][cc]
+          if (!cell || cell.observedColor !== color) { coords = []; break }
+          coords.push({ row: rr, col: cc })
+        }
+        if (coords.length === need) return coords
+      }
+    }
+  }
+  return undefined
+}
+
+function hasLine(board: GameState['board'], color: PlayerId, need = 3): boolean {
+  return Boolean(anyWinningLine(board, color, need))
+}
+
+function isBoardFull(board: GameState['board']): boolean {
+  for (const row of board) for (const cell of row) if (!cell) return false
+  return true
+}
+
+function makeRng(seed?: number): () => number {
+  if (typeof seed !== 'number' || !Number.isFinite(seed)) return Math.random
+  let s = (seed >>> 0) || 1
+  return () => {
+    s ^= s << 13; s ^= s >>> 17; s ^= s << 5
+    return ((s >>> 0) % 1_000_000) / 1_000_000
+  }
 }

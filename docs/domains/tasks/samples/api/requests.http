@@ -2,36 +2,37 @@
 
 ### List tasks
 GET {{base}}/api/tasks
-accept: application/json
+Accept: application/json
 
 ### Create task (ok)
 POST {{base}}/api/tasks
-content-type: application/json
+Content-Type: application/json
+Accept: application/json
 
 { "title": "Buy milk" }
 
-### Create task (error: empty title)
+### Create task (error: empty)
 POST {{base}}/api/tasks
-content-type: application/json
+Content-Type: application/json
+Accept: application/json
 
 { "title": "  " }
 
-### Update done (ok)
-@taskId = 8d3d4cf0-1234-4c5b-b17e-1f7d23456789
+### Toggle done (ok)
 PATCH {{base}}/api/tasks/{{taskId}}
-content-type: application/json
+Content-Type: application/json
+Accept: application/json
 
 { "done": true }
 
-### Update done (error: invalid type)
+### Toggle done (error: type invalid)
 PATCH {{base}}/api/tasks/{{taskId}}
-content-type: application/json
+Content-Type: application/json
+Accept: application/json
 
 { "done": "yes" }
 
-### Delete (ok)
+### Delete task
 DELETE {{base}}/api/tasks/{{taskId}}
-
-### Delete (error: not found)
-DELETE {{base}}/api/tasks/does-not-exist
+Accept: application/json
 

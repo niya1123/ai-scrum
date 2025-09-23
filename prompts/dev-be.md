@@ -6,6 +6,8 @@ Constraints:
 - 実装はタイムゾーン/整合性に注意（日時/ID/状態遷移などドメイン要件に応じる）。
 - 将来 `adapter` 差替えで拡張可能に（インタフェース設計）。
 - 配置規約: APIサンプル（例・契約例）は `docs/samples/api/` に追加。ルート直下に新規ファイルを作らない。
+- 実装配置ポリシー: ドメイン固有のAPI/ロジックは `domains/<primary-domain>/src/` 配下に置くこと
+  （`<primary-domain>` は `DOMAIN_SPEC` の直下ディレクトリ名）。
 - 成果物の配置: 実装ログは `out/dev-be/<RUN_ID>/iter-#/` に保存（Orchestratorが出力先を用意）。
 
 Output:

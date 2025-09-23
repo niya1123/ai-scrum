@@ -6,6 +6,8 @@ Constraints:
 - バックログのバリデーション要件を実装（未入力・形式・相関チェックなど）。
 - ビルド/起動/テスト手順を更新（README差分）
 - 配置規約: 新規ドキュメント/サンプルは `docs/` 配下に配置。ルート直下に新規ファイルを作らない。
+- 実装配置ポリシー: ドメイン固有のUI/資産は `domains/<primary-domain>/src/` 配下に置くこと
+  （`<primary-domain>` は `DOMAIN_SPEC` の直下ディレクトリ名）。
 - 成果物の配置: 実装ログは `out/dev-fe/<RUN_ID>/iter-#/` に保存（Orchestratorが出力先を用意）。
 
 Output:

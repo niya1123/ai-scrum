@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "preserve",
@@ -19,30 +15,6 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
-    "paths": {
-      "@trip": [
-        "trip/src/index.ts"
-      ],
-      "@trip/*": [
-        "trip/src/*"
-      ],
-      "@todo": [
-        "todo/src/index.ts"
-      ],
-      "@todo/*": [
-        "todo/src/*"
-      ],
-      "@/domain/trip": [
-        "trip/src/index.ts"
-      ],
-      "@/domain/task": [
-        "todo/src/index.ts"
-      ],
-      "@/adapters/*": [
-        "trip/src/adapters/*",
-        "todo/src/adapters/*"
-      ]
-    },
     "plugins": [
       {
         "name": "next"
@@ -55,7 +27,5 @@
     "**/*.tsx",
     ".next/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

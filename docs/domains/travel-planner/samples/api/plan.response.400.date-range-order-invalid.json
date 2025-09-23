@@ -1,5 +1,0 @@
-{
-  "errors": [
-    { "field": "date_range", "code": "order", "message": "start_date must be <= end_date" }
-  ]
-}

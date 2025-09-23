@@ -47,13 +47,8 @@ const webServer = SHOULD_START_WEB_SERVER
   : undefined
 
 export default defineConfig({
-  // Allow both legacy root tests and per-domain tests under trip/* and todo/*
   testDir: ROOT_DIR,
-  testMatch: [
-    'tests/e2e/**/*.spec.ts',
-    'trip/tests/e2e/**/*.spec.ts',
-    'todo/tests/e2e/**/*.spec.ts',
-  ],
+  testMatch: ['tests/e2e/**/*.spec.ts'],
   timeout: 40_000,
   expect: { timeout: 5_000 },
   reporter: reporters as any,

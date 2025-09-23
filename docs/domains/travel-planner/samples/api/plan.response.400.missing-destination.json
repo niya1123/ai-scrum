@@ -1,5 +1,0 @@
-{
-  "errors": [
-    { "field": "destination", "code": "required", "message": "destination is required" }
-  ]
-}

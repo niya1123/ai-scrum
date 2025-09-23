@@ -1,11 +1,12 @@
-# Domain Specs
+# ドメイン仕様格納ルール
 
-本ディレクトリは、PO/Architect/Planner が参照する領域固有の仕様（Domain Spec）を配置します。
+このディレクトリには各スクラム実行で参照するドメイン仕様（Domain Spec）を配置します。オーケストレータは毎回 1 つの仕様ファイルを読み込みます。
 
-- 既定の参照先は `DOMAIN_SPEC` 環境変数で指定します（未指定時は `domains/examples/travel-planner.md`）。
-- 形式は自由（Markdown/MDX/YAML/JSON など）。PO はこの内容をもとにユーザーストーリーを生成します。
+- 既定では `domains/examples/travel-planner.md` が選択されます。別の仕様を使う場合は `npm run domain` にキーワードまたはファイルパスを渡してください。
+- 新しいドメインを始めるには `domains/<ドメイン名>/<ドメイン名>-plan.md` を作成し、以下のコマンドを実行します。
+  ```
+  npm run domain domains/<ドメイン名>/<ドメイン名>-plan.md
+  ```
+- `domains/` 配下に複数の仕様ファイルを置いておき、実行時に目的のファイルを選択する運用も可能です。
 
-例:
-- `domains/examples/travel-planner.md`: 既存MVP相当の仕様
-- `domains/examples/todo-app.md`: ToDo管理アプリのサンプル仕様
-
+`domains/examples/` に含まれるサンプルは仕様の粒度や書式の参考になります。

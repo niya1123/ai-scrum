@@ -9,7 +9,7 @@ import { createServer } from "node:net";
 const sh = promisify(exec);
 const OUT_DIR = "out";
 const PROMPTS_DIR = "prompts";
-const DEFAULT_DOMAIN_SPEC = process.env.DOMAIN_SPEC || "domains/examples/travel-planner.md";
+const DEFAULT_DOMAIN_SPEC = process.env.DOMAIN_SPEC || "domains/examples/travel-planner/travel-planner-plan.md";
 // Namespace per run to avoid artifact collisions across multiple orchestrator runs
 const RUN_ID = process.env.RUN_ID || new Date().toISOString().replace(/[:.]/g, "-");
 process.env.RUN_ID = RUN_ID;

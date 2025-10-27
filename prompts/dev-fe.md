@@ -12,6 +12,7 @@ Output:
 - 変更差分（ファイル一覧/意図）
 - 起動/確認手順（localhost URL）
 - QAへの注意点
+- 最終行に `STATUS: implemented`（実装完了時）または `STATUS: proposal`（提案のみの場合）を必ず記載。
 
 Handoff:
 - QA

@@ -12,6 +12,7 @@ Output:
 - 変更差分
 - 単体/契約テスト（あれば）
 - QAに伝えるサンプルリクエスト/レスポンス
+- 最終行に `STATUS: implemented`（実装完了時）または `STATUS: proposal`（提案のみの場合）を必ず記載。
 
 Handoff:
 - QA

@@ -3,7 +3,7 @@ import "dotenv/config";
 import { exec, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { existsSync, mkdirSync, writeFileSync, readFileSync, createWriteStream, appendFileSync, renameSync, rmSync, cpSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { createServer } from "node:net";
 
 const sh = promisify(exec);
@@ -22,6 +22,7 @@ const PROGRESS_INTERVAL = Number(process.env.PROGRESS_INTERVAL || 120); // ms
 // MCP 要求は無効化（ローカル CLI 実行を前提）。
 // 環境変数で上書き可: QA_REQUIRE_MCP=1 で再有効化。
 const QA_REQUIRE_MCP = String(process.env.QA_REQUIRE_MCP || "0") !== "0";
+const IMPLEMENTATION_STATUS_LINE = /^\s*STATUS:\s*(proposal|implemented)\s*$/i;
 
 function logSection(title: string) {
   if (process.env.PROGRESS_ONLY) return; // 抑制
@@ -248,6 +249,212 @@ async function runCodex({
   });
 }
 
+type DevStatus = "proposal" | "implemented" | "unknown";
+
+const IMPLEMENTATION_HINT_REGEX = /(diff --git|```diff|変更差分|Changes|テスト結果|Tests?:)/i;
+
+type DocsArtifactCheck = {
+  /** Absolute or relative paths that must exist after docs stage */
+  paths: string[];
+};
+
+function parseImplementationStatus(message: string): DevStatus {
+  const lines = message
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const match = lines[i].match(IMPLEMENTATION_STATUS_LINE);
+    if (match) {
+      return match[1].toLowerCase() as DevStatus;
+    }
+  }
+  return "unknown";
+}
+
+function hasImplementationSignal(message: string): boolean {
+  return IMPLEMENTATION_HINT_REGEX.test(message);
+}
+
+type DevRole = "fe" | "be";
+
+const DEV_ROLE_CONFIG: Record<DevRole, { dirName: "dev-fe" | "dev-be"; prompt: string; label: "FE" | "BE" }> = {
+  fe: { dirName: "dev-fe", prompt: "dev-fe.md", label: "FE" },
+  be: { dirName: "dev-be", prompt: "dev-be.md", label: "BE" },
+};
+
+type DevRunOptions = {
+  role: DevRole;
+  iteration: number;
+  retry: boolean;
+  tasksFile: string;
+};
+
+type ImplementationStageKind = "dev" | "docs";
+
+const ensureStageImplementation = async ({
+  stageKind,
+  stageLabel,
+  lastMessageFile,
+  jsonLogFile,
+  inputFiles,
+  envBase,
+  forced,
+  docsCheck,
+}: {
+  stageKind: ImplementationStageKind;
+  stageLabel: string;
+  lastMessageFile: string;
+  jsonLogFile?: string;
+  inputFiles: string[];
+  envBase?: Record<string, string | undefined>;
+  forced: boolean;
+  docsCheck?: DocsArtifactCheck;
+}): Promise<void> => {
+  const lastAbs = join(OUT_DIR, lastMessageFile);
+  if (!existsSync(lastAbs)) return;
+  const content = readFileSync(lastAbs, "utf8");
+  const status = parseImplementationStatus(content);
+
+  if (status === "implemented") {
+    if (stageKind === "dev" && !hasImplementationSignal(content)) {
+      console.warn(`WARN ${stageLabel}: STATUS: implemented ですが差分/テストの記述を検出できませんでした。`);
+    }
+    if (stageKind === "docs" && docsCheck) {
+      const missing = docsCheck.paths.filter((p) => !existsSync(p));
+      if (missing.length) {
+        console.warn(`WARN ${stageLabel}: STATUS: implemented ですが、以下の成果物パスが存在しません: ${missing.join(", ")}`);
+      }
+    }
+    return;
+  }
+
+  if (forced) {
+    throw new Error(`${stageKind.toUpperCase()} stage '${stageLabel}' returned status '${status}' even after forcing implementation.`);
+  }
+
+  const baseDir = dirname(lastAbs);
+  const baseName = basename(lastAbs, ".log");
+  const statusLabel = status === "proposal" ? "proposal" : "unknown";
+  const archivedLog = join(baseDir, `${baseName}-${statusLabel}.log`);
+  if (existsSync(archivedLog)) rmSync(archivedLog);
+  renameSync(lastAbs, archivedLog);
+
+  let archivedJson: string | undefined;
+  if (jsonLogFile) {
+    const jsonAbs = join(OUT_DIR, jsonLogFile);
+    if (existsSync(jsonAbs)) {
+      archivedJson = join(baseDir, `${baseName}-${statusLabel}.jsonl`);
+      if (existsSync(archivedJson)) rmSync(archivedJson);
+      renameSync(jsonAbs, archivedJson);
+    }
+  }
+
+  const forceNote = join(baseDir, `${baseName}-force-implement.md`);
+  const proposalBody = readFileSync(archivedLog, "utf8");
+  const reasonLine =
+    status === "unknown"
+      ? "System note: 最終行に `STATUS: implemented` または `STATUS: proposal` を出力してください。フラグを検出できなかったため、自動的に実装フェーズへ移行します。"
+      : `System note: STATUS: ${status} が検出されたため、自動的に実装フェーズへ移行してください。`;
+  const followupLine =
+    stageKind === "docs"
+      ? "以下の提案内容を元に、要求された Markdown と複製ファイルを生成してください。"
+      : "以下の提案内容を確実に反映し、差分とテスト結果を出力してください。";
+  const note = [reasonLine, followupLine, proposalBody].join("\n\n");
+  writeFileSync(forceNote, note, { encoding: "utf8" });
+
+  const forceInputs = [...inputFiles, forceNote];
+  const forceEnv = { ...(envBase || {}), DEV_FORCE_IMPLEMENT: stageKind === "dev" ? "1" : undefined };
+
+  await runCodex({
+    inputFiles: forceInputs,
+    lastMessageFile,
+    jsonLogFile,
+    stageLabel: `${stageLabel}(impl)`,
+    env: forceEnv,
+  });
+
+  await ensureStageImplementation({
+    stageKind,
+    stageLabel,
+    lastMessageFile,
+    jsonLogFile,
+    inputFiles,
+    envBase: forceEnv,
+    forced: true,
+    docsCheck,
+  });
+};
+
+const runDevAgent = async ({ role, iteration, retry, tasksFile }: DevRunOptions) => {
+  const config = DEV_ROLE_CONFIG[role];
+  const iterDir = retry ? `iter-${iteration}-retry` : `iter-${iteration}`;
+  const suffix = retry ? `${iteration}-retry` : `${iteration}`;
+  const baseDir = join(OUT_DIR, config.dirName, RUN_ID, iterDir);
+  ensureDir(baseDir);
+
+  const stageLabel = `Dev-${config.label}#${iteration}${retry ? "-retry" : ""}`;
+  const lastMessageFile = join(config.dirName, RUN_ID, iterDir, `${config.dirName}-${suffix}.log`);
+  const jsonLogFile = join(config.dirName, RUN_ID, iterDir, `${config.dirName}-${suffix}.jsonl`);
+  const inputFiles = [join(PROMPTS_DIR, config.prompt), tasksFile];
+
+  await runCodex({
+    inputFiles,
+    lastMessageFile,
+    jsonLogFile,
+    stageLabel,
+  });
+
+  await ensureStageImplementation({
+    stageKind: "dev",
+    stageLabel,
+    lastMessageFile,
+    jsonLogFile,
+    inputFiles,
+    forced: false,
+  });
+};
+
+const runDocsAgent = async ({ iteration, retry, tasksFile }: { iteration: number; retry: boolean; tasksFile: string }) => {
+  const iterDir = retry ? `iter-${iteration}-retry` : `iter-${iteration}`;
+  const suffix = retry ? `${iteration}-retry` : `${iteration}`;
+  const baseDir = join(OUT_DIR, "docs", RUN_ID, iterDir);
+  ensureDir(baseDir);
+
+  const stageLabel = `Docs#${iteration}${retry ? "-retry" : ""}`;
+  const lastMessageFile = join("docs", RUN_ID, iterDir, `docs-${suffix}.log`);
+  const jsonLogFile = join("docs", RUN_ID, iterDir, `docs-${suffix}.jsonl`);
+  const inputFiles = [join(PROMPTS_DIR, "docs.md"), tasksFile];
+
+  const docsArtifacts: DocsArtifactCheck = {
+    paths: [
+      join("docs", "domains", "kakei", "API.md"),
+      join("docs", "domains", "kakei", "USER_GUIDE.md"),
+      join("docs", "domains", "kakei", "samples", "api"),
+      join("docs", "scrum", RUN_ID, "RETRO.md"),
+      join("share", "retro", `${RUN_ID}.md`),
+      join("share", "retro", "latest.md"),
+    ],
+  };
+
+  await runCodex({
+    inputFiles,
+    lastMessageFile,
+    jsonLogFile,
+    stageLabel,
+  });
+
+  await ensureStageImplementation({
+    stageKind: "docs",
+    stageLabel,
+    lastMessageFile,
+    jsonLogFile,
+    inputFiles,
+    forced: false,
+    docsCheck: docsArtifacts,
+  });
+};
+
 // 競合回避用: 利用可能なエフェメラルポートを確保
 async function getEphemeralPort(): Promise<number> {
   return new Promise((resolve, reject) => {
@@ -366,7 +573,7 @@ function parseManualArtifacts(args: string[]): ManualArtifacts {
   const res: ManualArtifacts = {};
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === "--") break;
+    // if (arg === "--") break;
     if (arg === "--backlog") {
       const next = args[++i];
       if (!next || next.startsWith("--")) {
@@ -600,28 +807,13 @@ async function main() {
   for (let i = 1; i <= MAX_ITERS; i++) {
     logSection(`4) 実装イテレーション ${i}/${MAX_ITERS}`);
 
-    const devJobs: Promise<any>[] = [];
+    const devJobs: Promise<void>[] = [];
+    const tasksFile = join(PLAN_DIR, "tasks.yml");
     if (should("dev") && PARALLEL_DEVS >= 1) {
-      ensureDir(join(DEV_FE_DIR, `iter-${i}`));
-      devJobs.push(
-        runCodex({
-          inputFiles: [join(PROMPTS_DIR, "dev-fe.md"), join(PLAN_DIR, "tasks.yml")],
-          lastMessageFile: join("dev-fe", RUN_ID, `iter-${i}`, `dev-fe-${i}.log`),
-          jsonLogFile: join("dev-fe", RUN_ID, `iter-${i}`, `dev-fe-${i}.jsonl`),
-          stageLabel: `Dev-FE#${i}`,
-        })
-      );
+      devJobs.push(runDevAgent({ role: "fe", iteration: i, retry: false, tasksFile }));
     }
     if (should("dev") && PARALLEL_DEVS >= 2) {
-      ensureDir(join(DEV_BE_DIR, `iter-${i}`));
-      devJobs.push(
-        runCodex({
-          inputFiles: [join(PROMPTS_DIR, "dev-be.md"), join(PLAN_DIR, "tasks.yml")],
-          lastMessageFile: join("dev-be", RUN_ID, `iter-${i}`, `dev-be-${i}.log`),
-          jsonLogFile: join("dev-be", RUN_ID, `iter-${i}`, `dev-be-${i}.jsonl`),
-          stageLabel: `Dev-BE#${i}`,
-        })
-      );
+      devJobs.push(runDevAgent({ role: "be", iteration: i, retry: false, tasksFile }));
     }
     if (devJobs.length) await Promise.all(devJobs);
     if (!should("qa") && !should("docs")) {
@@ -691,21 +883,20 @@ async function main() {
     // Accept only if GREEN and (runner gating条件を満たす)
     const qaGreen = should("qa") && isQaGreen(qaLast);
     const runnerOk = !QA_REQUIRE_MCP || runner === "mcp";
-    if (qaGreen && runnerOk) {
-      console.log("\n✅ QA GREEN → 受け入れ完了");
-      if (should("docs")) {
-        logSection("6) Docs: ドキュメント生成");
-        ensureDir(join(DOCS_DIR, `iter-${i}`));
-        await runCodex({
-          inputFiles: [join(PROMPTS_DIR, "docs.md"), join(PLAN_DIR, "tasks.yml")],
-          lastMessageFile: join("docs", RUN_ID, `iter-${i}`, `docs-${i}.log`),
-          jsonLogFile: join("docs", RUN_ID, `iter-${i}`, `docs-${i}.jsonl`),
-          stageLabel: `Docs#${i}`,
-        });
-        syncRetroShare(RUN_ID);
-      }
-      console.log(`\n完了: 成果物/ログは '${OUT_DIR}/' を参照してください。`);
-      return;
+      if (qaGreen && runnerOk) {
+        console.log("\n✅ QA GREEN → 受け入れ完了");
+        if (should("docs")) {
+          logSection("6) Docs: ドキュメント生成");
+          ensureDir(join(DOCS_DIR, `iter-${i}`));
+          await runDocsAgent({
+            iteration: i,
+            retry: false,
+            tasksFile: join(PLAN_DIR, "tasks.yml"),
+          });
+          syncRetroShare(RUN_ID);
+        }
+        console.log(`\n完了: 成果物/ログは '${OUT_DIR}/' を参照してください。`);
+        return;
     } else if (qaGreen && !runnerOk) {
       console.warn("\n⚠️  QA は GREEN ですが runner が MCP ではありません (runner!=mcp)。QA_REQUIRE_MCP=1 のため不合格扱いにします。");
     }
@@ -768,6 +959,18 @@ async function main() {
       if (existsSync(qaLastPath)) {
         replanInputs.push(qaLastPath);
       }
+      const qaStreamPath = join(OUT_DIR, "qa", RUN_ID, `iter-${i}`, "stream.jsonl");
+      if (existsSync(qaStreamPath)) {
+        replanInputs.push(qaStreamPath);
+      }
+      const qaReportResultsPath = join(OUT_DIR, "qa", RUN_ID, `iter-${i}`, "results.json");
+      if (existsSync(qaReportResultsPath)) {
+        replanInputs.push(qaReportResultsPath);
+      }
+      const qaRunnerLogPath = join(QA_DIR, "qa-runner.log");
+      if (existsSync(qaRunnerLogPath)) {
+        replanInputs.push(qaRunnerLogPath);
+      }
 
       ensureDir(join(PLAN_DIR, "replan", `iter-${i}`));
       await runCodex({
@@ -783,28 +986,13 @@ async function main() {
       // 5.3 再分解の内容を Dev に即時反映（開始ステージが qa の場合でも実行）
       if (AUTO_DEV_AFTER_REPLAN && PARALLEL_DEVS > 0) {
         logSection("5.3 Dev: 再分解タスクの適用 (RED後)");
-        const devJobs2: Promise<any>[] = [];
+        const devJobs2: Promise<void>[] = [];
+        const tasksFileRetry = join(PLAN_DIR, "tasks.yml");
         if (PARALLEL_DEVS >= 1) {
-          ensureDir(join(DEV_FE_DIR, `iter-${i}-retry`));
-          devJobs2.push(
-            runCodex({
-              inputFiles: [join(PROMPTS_DIR, "dev-fe.md"), join(PLAN_DIR, "tasks.yml")],
-              lastMessageFile: join("dev-fe", RUN_ID, `iter-${i}-retry`, `dev-fe-${i}-retry.log`),
-              jsonLogFile: join("dev-fe", RUN_ID, `iter-${i}-retry`, `dev-fe-${i}-retry.jsonl`),
-              stageLabel: `Dev-FE#${i}-retry`,
-            })
-          );
+          devJobs2.push(runDevAgent({ role: "fe", iteration: i, retry: true, tasksFile: tasksFileRetry }));
         }
         if (PARALLEL_DEVS >= 2) {
-          ensureDir(join(DEV_BE_DIR, `iter-${i}-retry`));
-          devJobs2.push(
-            runCodex({
-              inputFiles: [join(PROMPTS_DIR, "dev-be.md"), join(PLAN_DIR, "tasks.yml")],
-              lastMessageFile: join("dev-be", RUN_ID, `iter-${i}-retry`, `dev-be-${i}-retry.log`),
-              jsonLogFile: join("dev-be", RUN_ID, `iter-${i}-retry`, `dev-be-${i}-retry.jsonl`),
-              stageLabel: `Dev-BE#${i}-retry`,
-            })
-          );
+          devJobs2.push(runDevAgent({ role: "be", iteration: i, retry: true, tasksFile: tasksFileRetry }));
         }
         if (devJobs2.length) await Promise.all(devJobs2);
 
@@ -862,11 +1050,10 @@ async function main() {
           if (should("docs")) {
             logSection("6) Docs: ドキュメント生成");
             ensureDir(join(DOCS_DIR, `iter-${i}-retry`));
-            await runCodex({
-              inputFiles: [join(PROMPTS_DIR, "docs.md"), join(PLAN_DIR, "tasks.yml")],
-              lastMessageFile: join("docs", RUN_ID, `iter-${i}-retry`, `docs-${i}-retry.log`),
-              jsonLogFile: join("docs", RUN_ID, `iter-${i}-retry`, `docs-${i}-retry.jsonl`),
-              stageLabel: `Docs#${i}-retry`,
+            await runDocsAgent({
+              iteration: i,
+              retry: true,
+              tasksFile: join(PLAN_DIR, "tasks.yml"),
             });
             syncRetroShare(RUN_ID);
           }
@@ -880,11 +1067,10 @@ async function main() {
       // QA を通さず docs を求めている場合 (非推奨) 一度だけ docs 生成して終了
       logSection("6) Docs: ドキュメント生成 (QAスキップ) ");
       ensureDir(join(DOCS_DIR, `iter-${i}`));
-      await runCodex({
-        inputFiles: [join(PROMPTS_DIR, "docs.md"), join(PLAN_DIR, "tasks.yml")],
-        lastMessageFile: join("docs", RUN_ID, `iter-${i}`, `docs-${i}.log`),
-        jsonLogFile: join("docs", RUN_ID, `iter-${i}`, `docs-${i}.jsonl`),
-        stageLabel: `Docs#${i}`,
+      await runDocsAgent({
+        iteration: i,
+        retry: false,
+        tasksFile: join(PLAN_DIR, "tasks.yml"),
       });
       syncRetroShare(RUN_ID);
       console.log(`\n完了: 成果物/ログは '${OUT_DIR}/' を参照してください。`);

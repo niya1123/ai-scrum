@@ -4,7 +4,7 @@ test.describe('スモークテスト', () => {
   test('トップページが正常にロードされる', async ({ page }) => {
     await page.goto('/')
     
-    // ページタイトルが存在することを確認
+    // ページタイトルにAI Scrumが含まれることを確認
     await expect(page.locator('h1')).toContainText('AI Scrum')
     
     // ページが正常に表示されることを確認
@@ -18,7 +18,7 @@ test.describe('スモークテスト', () => {
     const main = page.locator('main')
     await expect(main).toBeVisible()
     
-    // 説明文が含まれていることを確認
+    // スクラム自動化の説明文が表示されることを確認
     await expect(page.locator('text=このリポジトリはスクラム自動化')).toBeVisible()
   })
 })

@@ -14,6 +14,7 @@ const OUTPUT_DIR = process.env.PLAYWRIGHT_OUTPUT_DIR || 'test-results'
 const TRACE = (process.env.PLAYWRIGHT_TRACE as 'on' | 'off' | 'retain-on-failure' | undefined) || 'retain-on-failure'
 const WORKERS = Number(process.env.PLAYWRIGHT_WORKERS || 1)
 const HEADLESS = process.env.PLAYWRIGHT_HEADLESS !== '0'
+const USE_SYSTEM_BROWSER = process.env.PLAYWRIGHT_USE_SYSTEM_BROWSER === '1'
 const WEB_SERVER_MODE = process.env.PLAYWRIGHT_WEB_SERVER_MODE || 'dev'
 const WEB_SERVER_COMMAND = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND
 const WEB_SERVER_TIMEOUT = Number(process.env.PLAYWRIGHT_WEB_SERVER_TIMEOUT || 40_000)
@@ -65,7 +66,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: { 
+        ...devices['Desktop Chrome'],
+        ...(USE_SYSTEM_BROWSER ? { channel: 'chromium' } : {}),
+      },
     },
   ],
 })
